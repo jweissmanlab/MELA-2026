@@ -1,0 +1,93 @@
+<div id="ideo-container"></div>
+
+<script>
+  // 1) Helper to export the rendered SVG
+  function exportIdeogramSVG(filename = 'ideogram.svg') {
+    const svgEl = document.querySelector('#ideo-container svg');
+    if (!svgEl) return console.error('No SVG found in #ideo-container');
+
+    const clone = svgEl.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+    // Ensure it has a viewBox so the SVG is standalone
+    if (!clone.getAttribute('viewBox')) {
+      const bbox = svgEl.getBBox();
+      clone.setAttribute('viewBox', `0 0 ${Math.ceil(bbox.width)} ${Math.ceil(bbox.height)}`);
+    }
+
+    const source = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      new XMLSerializer().serializeToString(clone);
+
+    const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // 2) Load Ideogram and render with labels
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/ideogram@1.53.0/dist/js/ideogram.min.js';
+  
+  script.onload = () => {
+    const annotHeight = 4.5;
+    const shape = 'm0,0 l 0 ' + (2 * annotHeight) + 'l ' + annotHeight/3 + ' 0' + 'l 0 -' + (2 * annotHeight) + 'z';
+    const intID1356 = { name: 'intID1356', chr: '5', start: 107641222, stop: 107641223 , shape: shape };
+    const intID845 = { name: 'intID845', chr: '9', start: 49108092, stop: 49108093 , shape: shape };
+    const intID1039 = { name: 'intID1039', chr: '5', start: 13910162, stop: 13910163 , shape: shape };
+    const intID1068 = { name: 'intID1068', chr: '12', start: 4295797, stop: 4295798 , shape: shape };
+    const intID1070 = { name: 'intID1070', chr: 'X', start: 139226796, stop: 139226797 , shape: shape };
+    const intID1113 = { name: 'intID1113', chr: '5', start: 137633757, stop: 137633758 , shape: shape };
+    const intID1134 = { name: 'intID1134', chr: '15', start: 42037902, stop: 42037903 , shape: shape };
+    const intID1351 = { name: 'intID1351', chr: '1', start: 42593038, stop: 42593039 , shape: shape };
+    const intID1423 = { name: 'intID1423', chr: '5', start: 13903676, stop: 13903677 , shape: shape };
+    const intID1497 = { name: 'intID1497', chr: '12', start: 21376524, stop: 21376525 , shape: shape };
+    const intID1206 = { name: 'intID1206', chr: '13', start: 32250570, stop: 32250571 , shape: shape };
+    const intID1646 = { name: 'intID1646', chr: '5', start: 13863960, stop: 13863961 , shape: shape };
+    const intID1667 = { name: 'intID1667', chr: '1', start: 84865222, stop: 84865223 , shape: shape };
+    const intID1631 = { name: 'intID1631', chr: '15', start: 38461889, stop: 38461890 , shape: shape };
+    const intID1739 = { name: 'intID1739', chr: '19', start: 9966099, stop: 9966100 , shape: shape };
+    const intID1811 = { name: 'intID1811', chr: '1', start: 49916744, stop: 49916745 , shape: shape };
+    const intID1919 = { name: 'intID1919', chr: '5', start: 134992197, stop: 134992198 , shape: shape };
+    const intID1979 = { name: 'intID1979', chr: '4', start: 135633018, stop: 135633019 , shape: shape };
+    const intID1994 = { name: 'intID1994', chr: 'X', start: 86198218, stop: 86198219 , shape: shape };
+    const intID2023 = { name: 'intID2023', chr: '1', start: 126011504, stop: 126011505 , shape: shape };
+    const intID1472 = { name: 'intID1472', chr: '18', start: 27219339, stop: 27219340 , shape: shape };
+    const intID620 = { name: 'intID620', chr: '8', start: 56071540, stop: 56071541 , shape: shape };
+    const intID250 = { name: 'intID250', chr: '2', start: 33985811, stop: 33985811 , shape: shape };
+    const intID257 = { name: 'intID257', chr: '2', start: 103795548, stop: 103795548 , shape: shape };
+    const intID394 = { name: 'intID394', chr: 'X', start: 22777534, stop: 22777534 , shape: shape };
+    const intID1763 = { name: 'intID1763', chr: '8', start: 61334623, stop: 61334623 , shape: shape };
+    const intID801 = { name: 'intID801', chr: 'X', start: 86199979, stop: 86199979 , shape: shape };
+    const intID566 = { name: 'intID566', chr: '7', start: 118851412, stop: 118851412 , shape: shape };
+    const intID888 = { name: 'intID888', chr: '1', start: 72853634, stop: 72853634 , shape: shape };
+    const intID683 = { name: 'intID683', chr: '3', start: 152814203, stop: 152814203 , shape: shape };
+    const intID700 = { name: 'intID700', chr: '11', start: 78104259, stop: 78104259 , shape: shape };
+    const intID709 = { name: 'intID709', chr: '4', start: 124353862, stop: 124353862 , shape: shape };
+    const intID1308 = { name: 'intID1308', chr: '13', start: 9011686, stop: 9011686 , shape: shape };
+    const intID945 = { name: 'intID945', chr: '5', start: 106170613, stop: 106170613 , shape: shape };
+    const intID2044 = { name: 'intID2044', chr: '17', start: 39485240, stop: 39485240 , shape: shape };
+
+    new Ideogram({
+      organism: 'mouse',
+      container: '#ideo-container',
+      resolution: 550,
+      chrHeight: 175,
+      chrMargin: 3,
+      annotationHeight: 4,
+      annotations: [intID1356, intID845, intID1039, intID1068, intID1070, intID1113, intID1134, intID1351, intID1423, 
+            intID1497, intID1206, intID1646, intID1667, intID1631, intID1739, intID1811, intID1919, intID1979, intID1994, 
+            intID2023, intID1472, intID620, intID250, intID257, intID394, intID1763, intID801, intID566, intID888, 
+            intID683, intID700, intID709, intID1308, intID945, intID2044],
+      rows: 1,
+      rotatable: false,
+
+      // Export once annotations (incl. labels) are drawn
+      onDrawAnnots: () => exportIdeogramSVG('ideogram.svg')
+    });
+  };
+  document.head.appendChild(script);
+</script>
