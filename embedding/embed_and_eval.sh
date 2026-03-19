@@ -2,35 +2,29 @@
 #SBATCH --job-name=embed_eval
 #SBATCH --output=models/logs/%A_%a.out
 #SBATCH --error=models/logs/%A_%a.err
-#SBATCH --time=04:00:00
-#SBATCH --array=0-8
+#SBATCH --time=06:00:00
+#SBATCH --array=0-3%2
 #SBATCH --mem=256G
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=1
 #SBATCH --gres=gpu:1
-#SBATCH --partition=ou_bcs_low
+#SBATCH --partition=bates
 
 mkdir -p models/logs
 
-# 8 scvi configs + 1 pca baseline = 9 jobs (indices 0-8)
-# columns: mode  n_latent  n_layers
+# columns: mode  n_latent  cov
 CONFIGS=(
-    "0.0  20  1"
-    "0.0  20  2"
-    "0.0  50  1"
-    "0.0  50  2"
-    "1.0  20  1"
-    "1.0  20  2"
-    "1.0  50  1"
-    "1.0  50  2"
-    "pca  50  1"
+    "0.0  50  none"
+    "0.0  50  type"
+    "1.0  50  none"
+    "1.0  50  type"
 )
 
 CFG=(${CONFIGS[$SLURM_ARRAY_TASK_ID]})
 MODE=${CFG[0]}
 N_LATENT=${CFG[1]}
-N_LAYERS=${CFG[2]}
+COV=${CFG[2]}
 
-echo "task $SLURM_ARRAY_TASK_ID: mode=$MODE n_latent=$N_LATENT n_layers=$N_LAYERS"
+echo "task $SLURM_ARRAY_TASK_ID: mode=$MODE n_latent=$N_LATENT cov=$COV"
 
-cd /home/gokulg/orcd/scratch/lt
-python embed_and_eval.py $MODE $N_LATENT $N_LAYERS
+cd /mnt/home/gokulg/devmap-paper/
+python embedding/embed_and_eval.py $MODE $N_LATENT $COV
