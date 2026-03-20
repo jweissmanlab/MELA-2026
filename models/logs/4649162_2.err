@@ -1,0 +1,65 @@
+/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python embedding/embed_and_eval.py 1.0 50 none ...
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/fabric/plugins/environments/slurm.py:204: The `srun` command is available on your system but is not used. HINT: If your intention is to run Lightning on SLURM, prepend your python command with `srun` like so: srun python embedding/embed_and_eval.py 1.0 50 none ...
+Traceback (most recent call last):
+  File "/mnt/home/gokulg/devmap-paper/embedding/embed_and_eval.py", line 44, in <module>
+    model.train(
+    ~~~~~~~~~~~^
+        max_epochs=15, early_stopping=True, early_stopping_patience=10,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        plan_kwargs={"kl_weight": kl_weight},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/scvi/model/base/_training_mixin.py", line 172, in train
+    return runner()
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/scvi/train/_trainrunner.py", line 222, in __call__
+    self._run_training_core()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/scvi/train/_trainrunner.py", line 143, in _run_training_core
+    self.trainer.fit(self.training_plan, self.data_splitter, ckpt_path=self.ckpt_path)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/scvi/train/_trainer.py", line 228, in fit
+    super().fit(*args, **kwargs)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py", line 584, in fit
+    call._call_and_handle_interrupt(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self,
+        ^^^^^
+    ...<6 lines>...
+        weights_only,
+        ^^^^^^^^^^^^^
+    )
+    ^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/pytorch/trainer/call.py", line 49, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py", line 630, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path, weights_only=weights_only)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/pytorch/trainer/trainer.py", line 1033, in _run
+    self.strategy.setup_environment()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/pytorch/strategies/strategy.py", line 129, in setup_environment
+    self.accelerator.setup_device(self.root_device)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/pytorch/accelerators/cuda.py", line 46, in setup_device
+    _check_cuda_matmul_precision(device)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/fabric/accelerators/cuda.py", line 166, in _check_cuda_matmul_precision
+    if not torch.cuda.is_available() or not _is_ampere_or_later(device):
+                                            ~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/lightning/fabric/accelerators/cuda.py", line 160, in _is_ampere_or_later
+    major, _ = torch.cuda.get_device_capability(device)
+               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/torch/cuda/__init__.py", line 615, in get_device_capability
+    prop = get_device_properties(device)
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/torch/cuda/__init__.py", line 632, in get_device_properties
+    _lazy_init()  # will define _get_device_properties
+    ~~~~~~~~~~^^
+  File "/mnt/home/gokulg/miniconda3/envs/lt/lib/python3.14/site-packages/torch/cuda/__init__.py", line 424, in _lazy_init
+    torch._C._cuda_init()
+    ~~~~~~~~~~~~~~~~~~~^^
+RuntimeError: No CUDA GPUs are available

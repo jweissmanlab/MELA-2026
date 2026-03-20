@@ -1,0 +1,3 @@
+task 0: mode=0.0 n_latent=50 cov=none
+running config: kl0.0_d50_l2_covnocov
+Exception raised during training. <class 'NameError'> No CUDA GPUs are available

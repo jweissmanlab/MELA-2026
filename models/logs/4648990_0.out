@@ -1,0 +1,3 @@
+task 0: mode=0.0 n_latent=20 n_layers=2
+running config: kl0.0_d20_l2
+Training:   0%|          | 0/15 [00:00<?, ?it/s]Epoch 1/15:   0%|          | 0/15 [00:00<?, ?it/s]

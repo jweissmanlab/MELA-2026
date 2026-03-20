@@ -1,0 +1,3 @@
+task 1: mode=0.0 n_latent=50 cov=type
+running config: kl0.0_d50_l2_covtype
+Exception raised during training. <class 'NameError'> CUDA driver initialization failed, you might not have a CUDA gpu.
