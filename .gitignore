@@ -1,4 +1,5 @@
 models/scvi/kl1.0*
+models/logs/*
 
 # Temp files
 .DS_Store
