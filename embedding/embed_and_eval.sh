@@ -3,20 +3,19 @@
 #SBATCH --output=models/logs/%A_%a.out
 #SBATCH --error=models/logs/%A_%a.err
 #SBATCH --time=06:00:00
-#SBATCH --array=0-3%2
 #SBATCH --mem=256G
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:1
-#SBATCH --partition=bates
+#SBATCH --partition=ou_bcs_low
 
 mkdir -p models/logs
 
 # columns: mode  n_latent  cov
 CONFIGS=(
     "0.0  50  none"
-    "0.0  50  type"
-    "1.0  50  none"
-    "1.0  50  type"
+    # "0.0  50  type"
+    # "1.0  50  none"
+    # "1.0  50  type"
 )
 
 CFG=(${CONFIGS[$SLURM_ARRAY_TASK_ID]})
