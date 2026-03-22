@@ -1,5 +1,6 @@
 models/scvi/kl1.0*
 models/logs/*
+commitment/adata_obs_with_mmd_thresholds.csv
 
 # Temp files
 .DS_Store
