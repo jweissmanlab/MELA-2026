@@ -233,7 +233,7 @@ edit_palette.update({ "!": "#505050","*":"lightgray","-": "white"})
 # Default style
 def set_theme(figsize=(3, 3), dpi=200):
     """Set the default style for the plots"""
-    plt.style.use(base_path / "plot.mplstyle")
+    plt.style.use("devmap/style.yaml")
     plt.rcParams["svg.fonttype"] = "none"
     plt.rcParams["figure.figsize"] = figsize
     plt.rcParams["figure.dpi"] = dpi

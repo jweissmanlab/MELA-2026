@@ -158,3 +158,7 @@ for name in metrics:
 
 print(df_within)
 sns.barplot(data=df_within, y="embryo", x="sinkhorn_normalized")
+
+# save dataframes
+df_within.to_csv("host_donor_distributional_distances.csv", index=False)
+df_pairwise.to_csv("pairwise_embryo_distributional_distances.csv", index=False)
