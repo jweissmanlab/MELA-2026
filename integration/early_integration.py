@@ -15,7 +15,7 @@ OUT_DIR = "models/integrated_scvi/"
 ANNOTATION_FILE = os.path.join(DATA_DIR, "embryos/annotation_v5.csv")
 TYPES_TO_REMOVE = ["doublet"]
 
-qiu22_overlapping_days = ['E6.5', 'E6.75', 'E7.0', 'E7.25', 'E7.5', 'E7.75', 'E8.0', 'E8.25', 'E8.5a']
+qiu22_overlapping_days = ['E6.5', 'E6.75', 'E7', 'E7.25', 'E7.5', 'E7.75', 'E8', 'E8.25', 'E8.5a']
 
 hvgs = pd.read_csv(f"{DATA_DIR}embryos/hvg_v5.csv", header=None)[0].tolist()
 gene_symbols = pd.read_csv(f"{DATA_DIR}gene_symbols.tsv", sep='\t', header=0)
@@ -99,7 +99,7 @@ model = scvi.model.SCVI(
     dispersion='gene-batch'
 )
 
-model.train(max_epochs=20, early_stopping=False)
+model.train(max_epochs=10, early_stopping=False)
 
 model.save(os.path.join(OUT_DIR, "scvi_model_early"), overwrite=True)
 combined.obsm["X_scvi"] = model.get_latent_representation()
