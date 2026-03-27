@@ -11,7 +11,7 @@ from itertools import product as iterproduct
 
 DATA_DIR = "/mnt/home/gokulg/data/"
 BUCKETS = {
-    "early": os.path.join(DATA_DIR, "qiu2022_integrated_scvi.h5ad"),
+    "early": os.path.join(DATA_DIR, "qiu22_early_integrated_scvi.h5ad"),
     "late": os.path.join(DATA_DIR, "qiu24_late_integrated_scvi.h5ad"),
 }
 
