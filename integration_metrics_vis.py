@@ -34,7 +34,7 @@ for df, title in zip([df_early, df_late], ["early", "late"]):
         df.loc[index_labels, column_labels].astype(float),
         xticklabels=column_labels,
         yticklabels=index_labels,
-        cmap="viridis",
+        cmap="magma_r",
         cbar_kws={'label': 'Sinkhorn distance'},
         square=True,
     )
