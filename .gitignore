@@ -1,5 +1,4 @@
-models/scvi/kl1.0*
-models/logs/*
+models/
 commitment/adata_obs_with_mmd_thresholds.csv
 
 # Temp files
