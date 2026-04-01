@@ -2,18 +2,33 @@ import treedata
 from geomloss import SamplesLoss
 import numpy as np
 import networkx as nx
-from geomloss import SamplesLoss
 from collections import defaultdict
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import torch
 import matplotlib.pyplot as plt
-import numpy as np
 import seaborn as sns
 import pandas as pd
 import scanpy as sc
 import pickle
 
-adata = treedata.read_h5td('/home/gokulg/orcd/scratch/lt/data/kl0.0_d50_l2_covnocov_adata_with_embeddings.h5ad')
+# ──────────────────────────────────────────────
+# Config
+# ──────────────────────────────────────────────
+n_subsample = 100      # max cells to subsample per comparison
+n_resamples = 10       # number of subsamples to average over
+n_perms = 100          # number of permutations for null distribution
+threshold_fraction = 0.9
+
+# Load data
+
+adata = treedata.read_h5td(
+    '../data/embryos/kl0.0_d50_l2_covnocov_adata_with_embeddings.h5ad'
+)
+
+adata.obs['time'] = [float(x.split('-')[0][1:]) for x in adata.obs['embryo'].values]
+
+
+print('data loaded')
 
 tree_filenames = []
 for e in ["7.5", "8.0", "8.5", "9.0", "9.5"]:
@@ -22,9 +37,11 @@ for e in ["7.5", "8.0", "8.5", "9.0", "9.5"]:
 tree_filenames.append("e10.0_r1_tree")
 
 tdatas = [
-    treedata.read_h5td(f"/home/gokulg/orcd/scratch/lt/data/embryos/{f}.h5td")
+    treedata.read_h5td(f"../data/embryos/{f}.h5td")
     for f in tree_filenames
 ]
+
+print('tree loaded')
 
 trees, tree_names = [], []
 for td in tdatas:
@@ -32,181 +49,151 @@ for td in tdatas:
         trees.append(td.obst[k])
         tree_names.append(k)
 
+# Precompute lookups
 
-
-# Create name->index mapping
 name_to_idx = {name: idx for idx, name in enumerate(adata.obs_names)}
-
-# get state variables as numpy array for fast indexing
 states = adata.obsm['X_scvi']
+cell_times = adata.obs['time'].values  # time per cell
 
-# MMD with energy kernel
+# Build per-timepoint index arrays
+timepoint_indices = defaultdict(list)
+for idx, t in enumerate(cell_times):
+    timepoint_indices[t].append(idx)
+timepoint_indices = {t: np.array(idxs) for t, idxs in timepoint_indices.items()}
+
+# Precompute per-timepoint state tensors (full, for subsampling later)
+timepoint_states = {t: states[idxs] for t, idxs in timepoint_indices.items()}
+
 mmd_loss = SamplesLoss("energy")
 
-# get all leaves
-leaves = []
+# Collect all leaves across trees
+all_leaves = []
 for tree in trees:
-    leaves.extend([node for node in tree.nodes() if tree.out_degree(node) == 0 and node in name_to_idx])
+    all_leaves.extend(
+        [n for n in tree.nodes() if tree.out_degree(n) == 0 and n in name_to_idx]
+    )
 
-# precompute descendants for each node (cache to avoid recomputation)
+# Cache leaf descendants per node
 descendants_cache = {}
 
 def get_leaf_descendants(node, tree):
-    """Get all leaf descendants of a node."""
     if node in descendants_cache:
         return descendants_cache[node]
-    
-    if tree.out_degree(node) == 0:  # node is a leaf
+    if tree.out_degree(node) == 0:
         result = {node}
     else:
-        result = set()
-        for descendant in nx.descendants(tree, node):
-            if tree.out_degree(descendant) == 0:
-                result.add(descendant)
-    
+        result = {
+            d for d in nx.descendants(tree, node)
+            if tree.out_degree(d) == 0
+        }
     descendants_cache[node] = result
     return result
 
-##################
-# subsample for MMD reference distribution
-##################
-n_subsample = 100
-##################
-##################
 
-# get all leaf indices and subsample once
-all_leaf_indices = np.array([name_to_idx[leaf] for leaf in leaves])
-all_leaf_states = states[all_leaf_indices]
+def subsample_tensor(arr, n):
+    """Subsample rows of a numpy array and return a float tensor."""
+    if len(arr) > n:
+        idx = np.random.choice(len(arr), n, replace=False)
+        return torch.from_numpy(arr[idx]).float()
+    return torch.from_numpy(arr).float()
 
-# subsample all leaf states
-if len(all_leaf_states) > n_subsample:
-    subsample_idx = np.random.choice(len(all_leaf_states), n_subsample, replace=False)
-    all_leaf_states_subsampled = all_leaf_states[subsample_idx]
-else:
-    all_leaf_states_subsampled = all_leaf_states
 
-all_leaf_states_tensor = torch.from_numpy(all_leaf_states_subsampled).float()
+# Compute MMD per node (timepoint-matched, averaged, with permutations)
 
-# Compute MMD once per node
-node_mmd = {}
+node_mmd = {}  # node -> { 'mmd': float, 'mmd_perm_mean': float, 'mmd_perm_std': float, 'time': float }
 
-for tree, name in tqdm(zip(trees, tree_names), desc="processing trees", total=len(trees)):
+for tree, tname in tqdm(zip(trees, tree_names), desc="processing trees", total=len(trees)):
+    for node in tqdm(tree.nodes(), desc="MMD per node", leave=False):
 
-    nodes = tree.nodes()
-
-    for node in tqdm(nodes, desc="computing MMD per node", leave=False):
-
-        # get descendant leaves of this node
+        # ---- descendant leaves ----
         descendant_leaves = get_leaf_descendants(node, tree)
-        
-        # get their indices and states
-        descendant_indices = np.array([name_to_idx[l] for l in descendant_leaves if l in name_to_idx])
-
+        descendant_indices = np.array(
+            [name_to_idx[l] for l in descendant_leaves if l in name_to_idx]
+        )
         if descendant_indices.size == 0:
-            # print(f"Node {node} has no descendant leaves in the dataset, skipping MMD computation.")
             continue
 
-        descendant_states = states[descendant_indices]
-        
-        # subsample descendant states
-        if len(descendant_states) > n_subsample:
-            subsample_idx = np.random.choice(len(descendant_states), n_subsample, replace=False)
-            descendant_states_subsampled = descendant_states[subsample_idx]
-        else:
-            descendant_states_subsampled = descendant_states
-        
-        descendant_states_tensor = torch.from_numpy(descendant_states_subsampled).float()
-        
-        # compute MMD between entire population and descendant leaves
-        mmd_value = mmd_loss(all_leaf_states_tensor, descendant_states_tensor).item()
-        
-        # get time attribute if it exists
+        descendant_states_full = states[descendant_indices]
+        n_desc = len(descendant_indices)
+
+        # ---- node time ----
         node_time = tree.nodes[node].get('time', None)
-        
-        node_mmd[node] = (mmd_value, node_time)
-
-results = {}
-
-for tree in tqdm(trees, desc="aggregating MMD results for leaves", total=len(trees)):
-    leaves_in_tree = [node for node in tree.nodes() if tree.out_degree(node) == 0 and node in name_to_idx]
-    for leaf in tqdm(leaves_in_tree, desc="processing leaves", leave=False):
-        if leaf not in node_mmd:
+        if node_time is None:
             continue
-        mmd_list = [node_mmd[leaf]]  # include leaf's own MMD
-        
-        # walk up the tree from leaf to root
-        current = leaf
-        
-        # for each ancestor, look up the precomputed MMD
-        while list(tree.predecessors(current)):
-            parent = list(tree.predecessors(current))[0]
-            if parent in node_mmd:
-                mmd_list.append(node_mmd[parent])
-            current = parent
-        
-        results[leaf] = mmd_list
 
-# Define threshold as fraction of maximum MMD
-threshold_fraction = 0.9
+        # ---- reference: all cells at this timepoint ----
+        ref_states_full = timepoint_states.get(node_time)
+        if ref_states_full is None or len(ref_states_full) == 0:
+            continue
 
-t_threshold_values = []
+        n_ref = len(ref_states_full)
 
-for leaf in tqdm(adata.obs_names, desc=f"Computing t_{threshold_fraction}"):
+        # ---- observed MMD (average over n_resamples) ----
+        mmd_vals = []
+        for _ in range(n_resamples):
+            desc_t = subsample_tensor(descendant_states_full, n_subsample)
+            ref_t = subsample_tensor(ref_states_full, n_subsample)
+            mmd_vals.append(mmd_loss(ref_t, desc_t).item())
+        obs_mmd = float(np.mean(mmd_vals))
 
-    if leaf not in results:
-        # If no MMD results for this leaf, set to NaN
-        t_threshold_values.append(np.nan)
-        continue
+        # ---- permutation null: sample random leaves from this timepoint ----
+        # We sample the same number of cells as descendant_leaves from the
+        # timepoint reference pool, then compare against the full timepoint pool.
+        perm_mmds = []
+        ref_indices_tp = timepoint_indices[node_time]
 
-    trajectory = results[leaf]
-    
-    if not trajectory:
-        # If no trajectory, set to NaN
-        t_threshold_values.append(np.nan)
-        continue
-    
-    mmd_values, times = zip(*trajectory)
-    mmd_values = np.array(mmd_values)
-    times = np.array(times)
-    
-    # Find maximum MMD
-    max_mmd = np.max(mmd_values)
-    
-    # Compute threshold
-    threshold = threshold_fraction * max_mmd
-    
-    # Find first time when MMD exceeds threshold
-    # Sort by time to ensure we find the earliest occurrence
-    sort_idx = np.argsort(times)
-    times_sorted = times[sort_idx]
-    mmd_sorted = mmd_values[sort_idx]
-    
-    exceeds_threshold = mmd_sorted >= threshold
-    
-    if np.any(exceeds_threshold):
-        # Find first index where threshold is exceeded
-        first_idx = np.argmax(exceeds_threshold)
-        t_threshold = times_sorted[first_idx]
-    else:
-        # Threshold never exceeded
-        t_threshold = np.nan
-    
-    t_threshold_values.append(t_threshold)
+        for _ in range(n_perms):
+            # draw n_desc cells without replacement from the timepoint pool
+            n_draw = min(n_desc, len(ref_indices_tp))
+            perm_idx = np.random.choice(len(ref_indices_tp), n_draw, replace=False)
+            perm_states = ref_states_full[perm_idx]
 
-# Add to adata.obs with dynamic column name
-col_name = f'mmd_t{int(threshold_fraction*100)}'
-adata.obs[col_name] = t_threshold_values
+            # average over resamples for this permutation too
+            perm_resample_vals = []
+            for _ in range(n_resamples):
+                perm_t = subsample_tensor(perm_states, n_subsample)
+                ref_t = subsample_tensor(ref_states_full, n_subsample)
+                perm_resample_vals.append(mmd_loss(ref_t, perm_t).item())
+            perm_mmds.append(float(np.mean(perm_resample_vals)))
 
-print(f"Added '{col_name}' to adata.obs")
-print(f"Number of cells: {len(t_threshold_values)}")
-print(f"Non-NaN values: {np.sum(~np.isnan(t_threshold_values))}")
-print(f"Mean {col_name}: {np.nanmean(t_threshold_values):.4f}")
-print(f"Median {col_name}: {np.nanmedian(t_threshold_values):.4f}")
+        perm_mmds = np.array(perm_mmds)
 
-# save the .obs as a csv
-obs_df = adata.obs.copy()
-obs_df.to_csv("/home/gokulg/orcd/scratch/devmap-paper/commitment/adata_obs_with_mmd_thresholds.csv")
+        # empirical p-value: fraction of permutations >= observed
+        p_value = float(np.mean(perm_mmds >= obs_mmd))
 
-# save the node to mmd dictionary with pickle
-with open("/home/gokulg/orcd/scratch/devmap-paper/commitment/node_mmd_dictionary.pkl", "wb") as f:
+        node_mmd[node] = {
+            'mmd': obs_mmd,
+            'time': node_time,
+            'perm_mean': float(np.mean(perm_mmds)),
+            'perm_std': float(np.std(perm_mmds)),
+            'p_value': p_value,
+        }
+
+# Aggregate per-leaf trajectories (root --> leaf)
+
+# results = {}
+
+# for tree in tqdm(trees, desc="aggregating trajectories"):
+#     leaves_in_tree = [
+#         n for n in tree.nodes()
+#         if tree.out_degree(n) == 0 and n in name_to_idx
+#     ]
+#     for leaf in leaves_in_tree:
+#         if leaf not in node_mmd:
+#             continue
+
+#         trajectory = [node_mmd[leaf]]
+#         current = leaf
+#         while list(tree.predecessors(current)):
+#             parent = list(tree.predecessors(current))[0]
+#             if parent in node_mmd:
+#                 trajectory.append(node_mmd[parent])
+#             current = parent
+
+#         results[leaf] = trajectory
+
+
+with open(
+    "commitment/node_mmd_dictionary_with_perms.pkl", "wb"
+) as f:
     pickle.dump(node_mmd, f)
