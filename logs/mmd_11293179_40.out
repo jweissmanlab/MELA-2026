@@ -1,0 +1,7 @@
+Array job 11293179, task 40 on node1702
+NVIDIA H100 80GB HBM3, 81559 MiB
+Total trees: 56, processing index 40
+Tree: E9.5-R1-C1  |  Device: cuda
+  274 eligible nodes
+Done → commitment/per_tree/node_mmd_040.pkl  (0 nodes)
+Task 40 finished at Wed Apr  1 17:59:07 EDT 2026

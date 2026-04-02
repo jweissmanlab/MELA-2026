@@ -1,0 +1,7 @@
+Array job 11315896, task 10 on node3908
+NVIDIA A100 80GB PCIe, 81920 MiB
+Total trees: 56, processing index 10
+Tree: E7.5-R3-C3  |  Device: cuda
+  296 eligible nodes
+Done → commitment/per_tree/node_mmd_010.pkl  (44 nodes)
+Task 10 finished at Thu Apr  2 08:15:18 EDT 2026

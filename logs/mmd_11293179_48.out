@@ -1,0 +1,7 @@
+Array job 11293179, task 48 on node3805
+NVIDIA A100 80GB PCIe, 81920 MiB
+Total trees: 56, processing index 48
+Tree: E9.5-R3-C3  |  Device: cuda
+  37150 eligible nodes
+Done → commitment/per_tree/node_mmd_048.pkl  (0 nodes)
+Task 48 finished at Wed Apr  1 18:02:56 EDT 2026
