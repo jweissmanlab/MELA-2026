@@ -55,3 +55,4 @@ environment.yml
 
 # Logs
 /processing/logs/
+*.out

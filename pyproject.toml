@@ -85,6 +85,9 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.setuptools.package-data]
+devmap = ["style.yaml"]
+
 [tool.ruff.lint.per-file-ignores]
 "docs/*" = ["I"]
 "tests/*" = ["D"]

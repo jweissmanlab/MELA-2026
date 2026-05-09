@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=qc          # friendly name for job.
-#SBATCH --nodes=1                      # ensure cpus are on one node
-#SBATCH --ntasks=1                     # run a single task
-#SBATCH --cpus-per-task=8             # number of cpus/threads requested.
-#SBATCH --mem=256gb                    # memory requested.
-#SBATCH --partition=weissman               # partition (queue) to use
-#SBATCH --account=weissman                 # account to use
-#SBATCH --output=logs/qc-%j.out     # name of output file.  %j is jobid
-#SBATCH --array=10-12                    # array of jobs to submit
+#SBATCH --job-name=qc 
+#SBATCH --nodes=1  
+#SBATCH --ntasks=1  
+#SBATCH --cpus-per-task=8  
+#SBATCH --mem=256gb 
+#SBATCH --partition=weissman    
+#SBATCH --account=weissman   
+#SBATCH --output=logs/qc-%j.out 
+#SBATCH --array=1-22%4 
 
 set -euo pipefail
 
@@ -27,8 +27,16 @@ fi
 n="$(printf '%s' "$line" | awk -F',' '{gsub(/^[ \t]+|[ \t]+$/, "", $1); print $1}')"
 p="$(printf '%s' "$line" | awk -F',' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}')"
 c="$(printf '%s' "$line" | awk -F',' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}')"
+min_umi="$(printf '%s' "$line" | awk -F',' '{gsub(/^[ \t]+|[ \t]+$/, "", $5); print $5}')"
+min_reads="$(printf '%s' "$line" | awk -F',' '{gsub(/^[ \t]+|[ \t]+$/, "", $6); print $6}')"
 
-echo "Running: n=$n p=$p c=$c"
+echo "Running: n=$n p=$p c=$c min_umi=$min_umi min_reads=$min_reads"
+
+# Disable adaptive thresholding for preliminary samples
+extra_args=()
+if (( SLURM_ARRAY_TASK_ID <= 6)); then
+  extra_args+=(--min_total_counts 100 --disable_adaptive_threshold)
+fi
 
 python quality_control.py \
   -i "$INPUT_DIR" \
@@ -36,4 +44,7 @@ python quality_control.py \
   -n "$n" \
   -p "$p" \
   -c "$c" \
+  --min_umi "$min_umi" \
+  --min_reads "$min_reads" \
+  "${extra_args[@]}"
 
