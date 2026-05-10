@@ -52,6 +52,8 @@ environment.yml
 # Data
 /processing/data/
 /processing/embryos/
+/gene_programs/results/
+*.h5td
 
 # Intermediate files
 /annotation/results/label_transfer.csv
@@ -68,3 +70,4 @@ environment.yml
 # Plots
 *.svg
 *.ai
+*.png

@@ -2,6 +2,7 @@
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pycea as py
 
 from .config import edit_palette
 
@@ -102,3 +103,33 @@ def plot_grouped_characters(tdata,ax = None,width = .1,label = False,offset = .0
                             label = id if label else False,width=width,gap = gap,palette = edit_palette,ax = ax, legend = False)
     tdata.obs = tdata.obs.drop(columns = tdata.obsm["characters"].columns)
     ax.tick_params(axis='x', pad=0)
+
+def plot_program_lineplot(df_top, df_rest, y, ax, palette, x="time", hue="program"):
+    df_top[hue] = df_top[hue].astype(str)
+    df_rest[hue] = df_rest[hue].astype(str)
+    # Background (gray)
+    sns.lineplot(
+        data=df_rest,
+        x=x,
+        y=y,
+        hue=hue,
+        units=hue,
+        estimator=None,
+        palette=["lightgray"],
+        linewidth=0.5,
+        legend=False,
+        ax=ax
+    )
+    # Top programs (colored)
+    sns.lineplot(
+        data=df_top,
+        x=x,
+        y=y,
+        hue=hue,
+        palette=palette,
+        linewidth=1.5,
+        legend=True,
+        ax=ax
+    )
+    plt.xticks([0, 2, 4, 6, 8]);
+    return ax

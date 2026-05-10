@@ -8,7 +8,7 @@ This repository contains code accompanying the paper **"The Quantitative Lineage
 ├── devmap/                  # Core Python package
 ├── processing/              # Raw data processing and lineage tree reconstruction
 ├── annotation/              # Cell type annotation and clustering
-├── validation/              # Validation of the PEtracer system and tracing performance
+├── validation/              # Validation of the PEtracer system
 ├── embedding/               # scVI embedding and evaluation
 ├── fate/                    # Cell fate bias and germ layer analysis
 ├── gene_programs/           # Gene program identification
@@ -53,14 +53,6 @@ Scripts for running Cellranger, quality control, and lineage tree reconstruction
 | 4 | `4_reconstruct.slurm` | Lineage tree reconstruction |
 | 5 | `5_embryo_statistics.ipynb` | Calculate per-embryo topology and recording statistics |
 
-```bash
-cd processing/
-sbatch 1_cellranger_gex.slurm
-sbatch 2_cellranger_ts.slurm
-sbatch 3_quality_control.slurm
-sbatch 4_reconstruct.slurm
-```
-
 ## Annotation
 
 Notebooks and scripts for annotating cell types. Steps should be run in order from the `annotation/` directory.
@@ -85,6 +77,18 @@ Notebooks validating the PEtracer system and tree reconstruction accuracy. Uses 
 |------|--------|-------------|
 | 1 | `1_ideogram.html` | Ideogram of PEtracer target site genomic locations |
 | 2 | `2_bulk_kinetics.ipynb` | Bulk sequencing to determine editing kinetics in vitro and in vivo |
-| 3 | `3_preliminary_tracing.ipynb` | Chimerism rate and cell type distribution in preliminary scRNA-seq data |
+| 3 | `3_preliminary_tracing.ipynb` | Analysis of preliminary scRNA-seq data |
 | 4 | `4_tracing_performance.ipynb` | Tracing performance evaluation in the full dataset |
+
+## Gene Programs
+
+Notebooks and scripts for identifying and annotating heritable gene programs. Steps should be run in order from the `gene_programs/` directory.
+
+**Software:** Claude CLI v2.1.138
+
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `1_define_programs.ipynb` | Identify heritable gene expression programs using Hotspot |
+| 2 | `2_annotate_programs.py` | Annotate programs with Claude |
+| 3 | `3_analyze_programs.ipynb` | Visualize program activation and rate of change|
 
