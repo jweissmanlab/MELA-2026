@@ -53,6 +53,18 @@ environment.yml
 /processing/data/
 /processing/embryos/
 
+# Intermediate files
+/annotation/results/label_transfer.csv
+/annotation/results/subclusters.csv
+/annotation/results/subclusters_annotated.csv
+
 # Logs
 /processing/logs/
 *.out
+
+# Claude files 
+.claude
+
+# Plots
+*.svg
+*.ai

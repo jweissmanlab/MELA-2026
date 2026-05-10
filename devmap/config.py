@@ -20,6 +20,35 @@ def get_paths(folder):
         base_path = Path(__file__).resolve().parent.parent
     return base_path, base_path / folder / "plots", base_path / folder / "results"
 
+# Edits
+edit_ids = {'EMX1': {'*': 0,
+  'GGACA': 1,
+  'ACAAT': 2,
+  'CCCTA': 3,
+  'AGTAC': 4,
+  'CCGAT': 5,
+  'CCTTT': 6,
+  'ATCAA': 7,
+  'ATTCG': 8},
+ 'RNF2': {'*': 0,
+  'ACAGT': 1,
+  'ACTTA': 2,
+  'TTCCT': 3,
+  'TATAT': 4,
+  'GTTCA': 5,
+  'TGCCA': 6,
+  'TCCAA': 7,
+  'ACTCC': 8},
+ 'HEK3': {'*': 0,
+  'GATAG': 1,
+  'AATCG': 2,
+  'GCAAG': 3,
+  'GCGCC': 4,
+  'CTTTG': 5,
+  'ATCAA': 6,
+  'CTCTC': 7,
+  'ATTTA': 8}}
+
 # Default colors
 colors = [
     "black",
@@ -269,6 +298,8 @@ phase_palette = {
     'G2/M': "#20C4AC",
     'S': "#FFF600",
 }
+
+edit_site_palette = {"ES1":"#adcdec","ES2":"#999bcd","ES3":"#44c8f5"}
 
 lineage_palette = {'Epiblast': "#A983F2",
                    'Primordial germ cell': "#20C4AC",

@@ -8,6 +8,7 @@ This repository contains code accompanying the paper **"The Quantitative Lineage
 ├── devmap/                  # Core Python package
 ├── processing/              # Raw data processing and lineage tree reconstruction
 ├── annotation/              # Cell type annotation and clustering
+├── validation/              # Validation of the PEtracer system and tracing performance
 ├── embedding/               # scVI embedding and evaluation
 ├── fate/                    # Cell fate bias and germ layer analysis
 ├── gene_programs/           # Gene program identification
@@ -15,8 +16,7 @@ This repository contains code accompanying the paper **"The Quantitative Lineage
 ├── vignettes/               # Tissue deep-dives (heart, neural crest, notochord)
 ├── commitment/              # Node-level commitment analysis (MMD)
 ├── distributional_metrics/  # Clonal and embryo-level distributional distances
-├── integration/             # Cross-dataset integration (optimal transport)
-└── validation/              # Validation analyses
+└── staging/                 # Cross-dataset integration (optimal transport)
 ```
 
 ## Setup
@@ -63,46 +63,28 @@ sbatch 4_reconstruct.slurm
 
 ## Annotation
 
-Notebooks and scripts for clustering and annotating cell types.
+Notebooks and scripts for annotating cell types. Steps should be run in order from the `annotation/` directory.
 
-## Embedding
+**Software:** [CellxGene](https://github.com/chanzuckerberg/cellxgene) v1.2.0, Claude CLI v2.1.138
 
-Scripts and notebooks for training the scVI embedding and evaluating it.
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `1_clusters_and_markers.ipynb` | Combine embryos, compute HVGs, cluster cells, identify marker genes |
+| 2 | `2_initial_claude_annotation.py` | Annotate initial clusters with Claude based on markers |
+| 3 | `3_refine_with_cellxgene.slurm` | Launch CellxGene instances per cluster for manual annotation refinement |
+| 4 | `4_cleanup_and_markers.ipynb` | Drop doublets and identify cell subtype marker genes |
+| 5 | `5_final_claude_annotation.py` | Annotate final cell subtypes with Claude based on markers |
 
-## Fate
-
-Notebooks for cell fate bias and germ layer analysis.
-
-## Gene Programs
-
-Notebooks for identifying and annotating gene programs.
-
-## Axial Patterning
-
-Notebooks for anterior-posterior scoring and neural patterning analysis.
-
-## Vignettes
-
-Tissue-level deep-dives into heart, neural crest, and notochord development.
-
-## Commitment
-
-Node-level lineage commitment analysis using maximum mean discrepancy (MMD).
-
-## Distributional Metrics
-
-Pairwise clonal and embryo-level distributional distance calculations.
-
-## Integration
-
-Cross-dataset integration with external reference datasets using optimal transport.
+Steps 2 and 5 call the Claude CLI. Step 3 requires interactive use of CellxGene; manually curated labels are saved to `data/cell_types.csv` and read by step 4.
 
 ## Validation
 
-Validation analyses including label transfer from reference atlases.
+Notebooks validating the PEtracer system and tree reconstruction accuracy. Uses preliminary bulk and scRNA-seq data as well as full scRNA-seq dataset. Steps should be run in order from the `validation/` directory.
 
----
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `1_ideogram.html` | Ideogram of PEtracer target site genomic locations |
+| 2 | `2_bulk_kinetics.ipynb` | Bulk sequencing to determine editing kinetics in vitro and in vivo |
+| 3 | `3_preliminary_tracing.ipynb` | Chimerism rate and cell type distribution in preliminary scRNA-seq data |
+| 4 | `4_tracing_performance.ipynb` | Tracing performance evaluation in the full dataset |
 
-## Citation
-
-> Koblan, Colgan et al. "The Quantitative Lineage Architecture of Mouse Embryogenesis." *bioRxiv* (2026).
