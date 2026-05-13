@@ -80,6 +80,16 @@ Notebooks validating the PEtracer system and tree reconstruction accuracy. Uses 
 | 3 | `3_preliminary_tracing.ipynb` | Analysis of preliminary scRNA-seq data |
 | 4 | `4_tracing_performance.ipynb` | Tracing performance evaluation in the full dataset |
 
+## Embedding
+
+Scripts and notebooks for training the scVI model and computing UMAP embeddings. Run from the `embedding/` directory. Steps 1 and 2 require a GPU.
+
+| Script | Description |
+|--------|-------------|
+| `1_scVI_embedding.slurm` | Train scVI model and save latent embeddings to `data/scvi.csv` |
+| `2_umap_embedding.ipynb` | Compute global and cluster UMAP embeddings |
+| `3_plot_umaps.ipynb` | Plot UMAP embeddings colored by different variables |
+
 ## Gene Programs
 
 Notebooks and scripts for identifying and annotating heritable gene programs. Steps should be run in order from the `gene_programs/` directory.
@@ -101,4 +111,6 @@ Notebooks for inferring spatial positions and analyzing spatial patterning. Step
 | 1 | `1_spatial_scores.ipynb` | Infer A-P and D-V spatial coordinates |
 | 2a | `2a_neural_patterning.ipynb` | Use spatial scores to analyze neural patterning |
 | 2b | `2b_axial_progenitors.ipynb` | Use spatial scores to explore axial progenitor dynamics |
+
+
 
