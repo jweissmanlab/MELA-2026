@@ -98,6 +98,18 @@ Notebooks for plotting lineage trees and calculating lineage statistics. Steps s
 | 1 | `1_plot_trees.ipynb` | Plot lineage trees and example clades |
 | 2 | `2_lineage_stats.ipynb` | Calculate per-embryo topology and recording statistics |
 
+## Fate
+
+Notebooks and scripts for fate restriction analysis. Steps should be run in order from the `fate/` directory.
+
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `1_ancestral_linkage.slurm` | Calculate ancestral linkage for germ layers and cell types |
+| 2 | `2_plot_linkage.ipynb` | Plot linkage heatmaps for germ layers and cell types |
+| 3 | `3_germ_layer_dynamics.ipynb` | Analysis of germ layer fate restriction dynamics |
+| 4 | `4_cell_type_dynamics.ipynb` | Analysis of cell type fate restriction dynamics |
+| 5 | `5_bias_and_stereotypy.ipynb` | Analysis of bias and stereotypy in fate restriction |
+
 ## Gene Programs
 
 Notebooks and scripts for identifying and annotating heritable gene programs. Steps should be run in order from the `gene_programs/` directory.
