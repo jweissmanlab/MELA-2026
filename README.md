@@ -92,3 +92,13 @@ Notebooks and scripts for identifying and annotating heritable gene programs. St
 | 2 | `2_annotate_programs.py` | Annotate programs with Claude |
 | 3 | `3_analyze_programs.ipynb` | Visualize program activation and rate of change|
 
+## Spatial Patterning
+
+Notebooks for inferring spatial positions and analyzing spatial patterning. Step 1 should be run first to infer spatial scores; steps 2a and 2b can be run in either order. Prior to step 1, E13.5 section E1S3 from the [Chen et al. 2022](https://doi.org/10.1016/j.cell.2022.04.003) stero-seq dataset must be downloaded and from [STOmicsDB](https://db.cngb.org/stomics/datasets/STDS0000058/explore?section=E13.5_E1S3.MOSTA.h5ad) and placed in the `data/` directory as `E13.5_E1S3.MOSTA.h5ad`.
+
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `1_spatial_scores.ipynb` | Infer A-P and D-V spatial coordinates |
+| 2a | `2a_neural_patterning.ipynb` | Use spatial scores to analyze neural patterning |
+| 2b | `2b_axial_progenitors.ipynb` | Use spatial scores to explore axial progenitor dynamics |
+

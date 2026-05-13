@@ -53,6 +53,7 @@ environment.yml
 /processing/data/
 /processing/embryos/
 /gene_programs/results/
+/spatial_patterning/results/
 *.h5td
 
 # Intermediate files

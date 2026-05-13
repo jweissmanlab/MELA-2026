@@ -1,6 +1,7 @@
 import networkx as nx
 import pandas as pd
 import numpy as np
+import pycea as py
 
 def identify_fate_progenitors(
     tree: nx.DiGraph,
@@ -284,6 +285,42 @@ def identify_fate_progenitors(
     ])
 
     return df, leaf_df
+
+def get_fate_progenitors(tdata, key, key_added="progenitors", min_descendants=1):
+    is_counts = key in tdata.obsm
+    if is_counts:
+        fate_names = tdata.obsm[key].columns
+        if "n" not in tdata.obs:
+            tdata.obs["n"] = 1
+            py.tl.ancestral_states(tdata, keys="n", method="sum")
+    else:
+        fate_names = None
+
+    clone_progenitors = {}
+    leaf_assignments = []
+    for clone, tree in tdata.obst.items():
+        print(f"Processing clone {clone}...")
+        progenitors, clone_assignments = identify_fate_progenitors(
+            tree,
+            key,
+            fate_names=fate_names,
+        )
+        clone_progenitors[clone] = progenitors.assign(clone=clone)
+        leaf_assignments.append(clone_assignments)
+
+    progenitors = pd.concat(clone_progenitors.values())
+    leaf_assignments = pd.concat(leaf_assignments)
+    progenitors["stage"] = progenitors["clone"].str.split("-R").str[0]
+    progenitors["embryo"] = progenitors["clone"].str.split("-C").str[0]
+
+    if min_descendants is not None:
+        progenitors = progenitors.query("fate_descendants > @min_descendants").copy()
+        leaf_assignments = leaf_assignments.query("progenitor in @progenitors.node").copy()
+
+    tdata.obs[key_added] = leaf_assignments["progenitor"]
+    progenitors.index = progenitors["node"].values
+
+    return progenitors
 
 def compute_pmi(df, group_col, cat_col, min_count=1, smoothing=0.0):
     """

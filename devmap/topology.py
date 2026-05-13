@@ -3,6 +3,7 @@ import networkx as nx
 from copy import deepcopy
 import numpy as np
 import pandas as pd
+from collections import deque
 
 def compress_single_child_internal_nodes(
     G: nx.DiGraph,
@@ -182,3 +183,50 @@ def marked_branches_by_depth(G, bins=np.arange(0, 10, 0.5), time_key="time"):
         "total_branches": total_counts,
         "pct_marked": fraction * 100,
     })
+
+def nearest_internal_neighbors(tree: nx.DiGraph, internal_nodes):
+    """
+    Return {internal_node: nearest_other_internal_node} for a tree stored as nx.DiGraph.
+
+    Unweighted version: O(n) on the underlying tree.
+    """
+    G = tree.to_undirected()
+    internal = set(internal_nodes)
+
+    if not internal:
+        return {}
+    if len(internal) == 1:
+        u = next(iter(internal))
+        return {u: None}
+
+    # Multi-source BFS, but keep track of which internal source claimed each node.
+    owner = {}
+    dist = {}
+    q = deque()
+
+    for s in internal:
+        owner[s] = s
+        dist[s] = 0
+        q.append(s)
+
+    # For each internal source, store its best neighboring source and distance.
+    best = {s: (float("inf"), None) for s in internal}
+
+    while q:
+        u = q.popleft()
+        for v in G[u]:
+            if v not in dist:
+                dist[v] = dist[u] + 1
+                owner[v] = owner[u]
+                q.append(v)
+            elif owner[v] != owner[u]:
+                # Two BFS regions meet across edge (u, v)
+                s1, s2 = owner[u], owner[v]
+                d = dist[u] + dist[v] + 1
+
+                if d < best[s1][0]:
+                    best[s1] = (d, s2)
+                if d < best[s2][0]:
+                    best[s2] = (d, s1)
+
+    return {s: best[s][1] for s in internal}
