@@ -12,7 +12,7 @@ This repository contains code accompanying the paper **"The Quantitative Lineage
 ├── embedding/               # scVI embedding and evaluation
 ├── fate/                    # Cell fate bias and germ layer analysis
 ├── gene_programs/           # Gene program identification
-├── axial_patterning/        # Anterior-posterior and neural patterning
+├── spatial_patterning/      # Spatial patterning analysis
 ├── vignettes/               # Tissue deep-dives (heart, neural crest, notochord)
 ├── commitment/              # Node-level commitment analysis (MMD)
 ├── distributional_metrics/  # Clonal and embryo-level distributional distances
@@ -51,7 +51,6 @@ Scripts for running Cellranger, quality control, and lineage tree reconstruction
 | 2 | `2_cellranger_ts.slurm` | Align target site reads with Cellranger; call PEtracer alleles |
 | 3 | `3_quality_control.slurm` | Per-embryo QC including doublet detection and allele processing |
 | 4 | `4_reconstruct.slurm` | Lineage tree reconstruction |
-| 5 | `5_embryo_statistics.ipynb` | Calculate per-embryo topology and recording statistics |
 
 ## Annotation
 
@@ -84,11 +83,20 @@ Notebooks validating the PEtracer system and tree reconstruction accuracy. Uses 
 
 Scripts and notebooks for training the scVI model and computing UMAP embeddings. Run from the `embedding/` directory. Steps 1 and 2 require a GPU.
 
-| Script | Description |
-|--------|-------------|
-| `1_scVI_embedding.slurm` | Train scVI model and save latent embeddings to `data/scvi.csv` |
-| `2_umap_embedding.ipynb` | Compute global and cluster UMAP embeddings |
-| `3_plot_umaps.ipynb` | Plot UMAP embeddings colored by different variables |
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `1_scVI_embedding.slurm` | Train scVI model and save latent embeddings to `data/scvi.csv` |
+| 2 | `2_umap_embedding.ipynb` | Compute global and cluster UMAP embeddings |
+| 3 | `3_plot_umaps.ipynb` | Plot UMAP embeddings colored by different variables |
+
+## Trees
+
+Notebooks for plotting lineage trees and calculating lineage statistics. Steps should be run in order from the `trees/` directory.
+
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `1_plot_trees.ipynb` | Plot lineage trees and example clades |
+| 2 | `2_lineage_stats.ipynb` | Calculate per-embryo topology and recording statistics |
 
 ## Gene Programs
 
