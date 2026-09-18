@@ -1,6 +1,10 @@
-# The Quantitative Lineage Architecture of Mouse Embryogenesis
+# Mouse Embryonic Lineage Atlas
 
-This repository contains code accompanying the paper **"The Quantitative Lineage Architecture of Mouse Embryogenesis"**.
+
+This repository contains code accompanying the paper **"Comprehensive Lineage Tracing Maps
+the Landscape of Cell Fate Decisions 
+in Mouse Embryogenesis
+"**.
 
 ## Repository Structure
 
