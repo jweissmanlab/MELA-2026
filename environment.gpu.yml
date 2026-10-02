@@ -1,0 +1,23 @@
+# GPU environment for rapids-singlecell UMAP/clustering (annotation/, embedding/) and
+# scVI integration / optimal transport distances (staging/). Requires an NVIDIA GPU with CUDA 12.
+name: gpu
+channels:
+  - rapidsai
+  - conda-forge
+  - nvidia
+dependencies:
+  - python=3.12
+  - rapids=25.10
+  - cuda-version=12.9
+  - pip
+  - ipykernel
+  - pip:
+      - rapids-singlecell==0.13.2
+      - scvi-tools==1.4.0.post1
+      - torch==2.9.0
+      - geomloss==0.3.1
+      - scanpy==1.11.4
+      - anndata==0.13.2
+      - treedata==0.3.1
+      - seaborn==0.13.2
+      - -e .

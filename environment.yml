@@ -1,0 +1,40 @@
+# Analysis environment. For the exact versions used in the paper, use environment.lock.yml.
+# GPU steps that use rapids-singlecell run in the separate environment.gpu.yml environment.
+name: devmap
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - ipykernel
+  - psutil
+  - pip:
+      - anndata
+      - convexml
+      - geomloss
+      - geopandas
+      - harmonypy
+      - hotspotsc
+      - igraph
+      - ipywidgets
+      - matplotlib
+      - networkx
+      - numba
+      - numpy
+      - pandas
+      - pycea-lineage
+      - scanpy
+      - scikit-image
+      - scikit-learn
+      - scipy
+      - scvi-tools
+      - seaborn
+      - shapely
+      - squidpy
+      - statsmodels
+      - torch
+      - tqdm
+      - treedata
+      - cassiopeia-lineage @ git+https://github.com/YosefLab/Cassiopeia.git@3.0.0
+      - tracertools @ git+https://github.com/colganwi/tracertools.git
+      - -e .
