@@ -1,9 +1,10 @@
 """Train scVI model and save latent embeddings to data/scvi.csv."""
 
 from pathlib import Path
+
 import pandas as pd
-import treedata as td
 import scvi
+import treedata as td
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 MODEL_DIR = Path(__file__).resolve().parent / "models" / "scvi_model"
@@ -21,7 +22,7 @@ tdata = tdata[:, hvgs].copy()
 print(f"{tdata.n_obs} cells, {tdata.n_vars} genes")
 
 print("Training scVI model...")
-scvi.model.SCVI.setup_anndata(tdata, categorical_covariate_keys = ["embryo","stage"])
+scvi.model.SCVI.setup_anndata(tdata, categorical_covariate_keys=["embryo", "type"])
 model = scvi.model.SCVI(
     tdata,
     n_latent=N_LATENT,
@@ -29,8 +30,11 @@ model = scvi.model.SCVI(
     n_hidden=N_HIDDEN,
     gene_likelihood="nb",
 )
-model.train(max_epochs=MAX_EPOCHS, batch_size=BATCH_SIZE,
-    early_stopping_patience=10,plan_kwargs={"kl_weight": 0.0},
+model.train(
+    max_epochs=MAX_EPOCHS,
+    batch_size=BATCH_SIZE,
+    early_stopping_patience=10,
+    plan_kwargs={"kl_weight": 0.0},
 )
 
 MODEL_DIR.mkdir(parents=True, exist_ok=True)

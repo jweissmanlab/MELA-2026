@@ -6,7 +6,7 @@
 #SBATCH --mem=256G
 #SBATCH --cpus-per-task=2
 #SBATCH --gres=gpu:1
-#SBATCH --partition=ou_bcs_low
+#SBATCH --partition=nvidia-A100-20
 
 mkdir -p logs
 python scVI_embedding.py
