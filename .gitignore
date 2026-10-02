@@ -22,7 +22,7 @@ __pycache__/
 # Tests and coverage
 /.pytest_cache/
 /.cache/
-/data/
+/data/*
 /node_modules/
 /.coverage*
 
@@ -41,13 +41,13 @@ __pycache__/
 node_modules/
 
 # Environment
-environment.yml
 
 # Datasets
 /datasets/
 
 # Development
 /dev/
+CLAUDE.md
 
 # Data
 /processing/data/
@@ -58,6 +58,7 @@ environment.yml
 /embedding/models/
 /fate/results/
 *.h5td
+*.csv
 
 # Intermediate files
 /annotation/results/label_transfer.csv
@@ -75,3 +76,7 @@ environment.yml
 *.svg
 *.ai
 *.png
+# Small data files needed to run the analysis
+!/data/merge_embryos.ipynb
+!/data/cell_types.csv
+!/data/hvg.csv
