@@ -5,14 +5,16 @@ requires = ["hatchling"]
 [project]
 name = "devmap"
 version = "0.0.1"
-description = "A spatiotemporal map of early mammalian development"
+description = "Code for Comprehensive Lineage Tracing Maps the Landscape of Cell Fate Decisions in Mouse Embryogenesis"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
-    {name = "William Colgan"},
+    {name = "William N. Colgan"},
+    {name = "Luke W. Koblan"},
 ]
 dependencies = [
+    "anndata",
     "cycler",
     "networkx",
     "scanpy",
@@ -24,18 +26,22 @@ dependencies = [
     "scipy",
     "scikit-learn",
     "fastcluster",
+    "hotspotsc",
+    "pycea-lineage",
+    "seaborn",
+    "statsmodels",
+    "tqdm",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pre-commit",
     "twine>=4.0.2",
 ]
 
 [tool.ruff]
 line-length = 120
-src = ["src"]
-extend-include = ["*.ipynb"]
+src = ["."]
+extend-exclude = ["*.ipynb"]
 
 [tool.ruff.format]
 docstring-code-format = true
