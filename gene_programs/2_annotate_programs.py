@@ -22,15 +22,17 @@ INPUT_CSV = Path("results/gene_programs.csv")
 OUTPUT_CSV = Path("results/annotated_programs.csv")
 MODEL = "claude-opus-4-6"
 
-JSON_SCHEMA = json.dumps({
-    "type": "object",
-    "properties": {
-        "name":        {"type": "string"},
-        "description": {"type": "string"},
-    },
-    "required": ["name", "description"],
-    "additionalProperties": False,
-})
+JSON_SCHEMA = json.dumps(
+    {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "description": {"type": "string"},
+        },
+        "required": ["name", "description"],
+        "additionalProperties": False,
+    }
+)
 
 # Tools to block so Claude doesn't read local files during annotation
 DISALLOWED_TOOLS = "Bash,Edit,Write,Glob,Grep,Read,Agent,WebSearch,WebFetch"
@@ -48,6 +50,7 @@ SYSTEM_CONTEXT = (
 
 
 def build_prompt(program_id: str, genes: str, active_in: str, size: int) -> str:
+    """Build the Claude prompt for a gene program from its genes and active cell types."""
     return (
         f"{SYSTEM_CONTEXT}\n\n"
         f"Program: {program_id}\n"
@@ -66,17 +69,32 @@ def annotate_program(
     size: int,
     max_retries: int = 3,
 ) -> dict:
+    """Query Claude for a short name and description of a gene program.
+
+    Retries up to ``max_retries`` times with exponential backoff.
+
+    Returns
+    -------
+    dict
+        ``{"name": ..., "description": ...}``; a placeholder annotation if all retries fail.
+    """
     prompt = build_prompt(program_id, genes, active_in, size)
     for attempt in range(max_retries):
         try:
             result = subprocess.run(
                 [
-                    "claude", "-p", prompt,
-                    "--model", MODEL,
-                    "--output-format", "json",
+                    "claude",
+                    "-p",
+                    prompt,
+                    "--model",
+                    MODEL,
+                    "--output-format",
+                    "json",
                     "--no-session-persistence",
-                    "--disallowed-tools", DISALLOWED_TOOLS,
-                    "--json-schema", JSON_SCHEMA,
+                    "--disallowed-tools",
+                    DISALLOWED_TOOLS,
+                    "--json-schema",
+                    JSON_SCHEMA,
                 ],
                 capture_output=True,
                 text=True,
@@ -110,7 +128,7 @@ def annotate_program(
             print(f"  Error on attempt {attempt + 1}: {e}")
 
         if attempt < max_retries - 1:
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
 
     return {
         "name": f"{program_id}_unannotated",
@@ -127,9 +145,9 @@ def load_existing_annotations(path: Path) -> set:
 
 
 def main():
+    """Annotate every gene program in ``INPUT_CSV`` and write results to ``OUTPUT_CSV``."""
     parser = argparse.ArgumentParser(description="Annotate gene programs with Claude.")
-    parser.add_argument("--resume", action="store_true",
-                        help="Skip programs already present in output CSV.")
+    parser.add_argument("--resume", action="store_true", help="Skip programs already present in output CSV.")
     args = parser.parse_args()
 
     programs = []
@@ -155,8 +173,7 @@ def main():
 
         for i, row in enumerate(todo, 1):
             pid = row["program"]
-            print(f"[{i}/{len(todo)}] {pid} "
-                  f"(size={row['size']}, active_in={row['active_in'][:60]}...)")
+            print(f"[{i}/{len(todo)}] {pid} " f"(size={row['size']}, active_in={row['active_in'][:60]}...)")
 
             annotation = annotate_program(
                 pid,
@@ -166,14 +183,16 @@ def main():
             )
             print(f"  -> {annotation['name']}")
 
-            writer.writerow({
-                "program":     pid,
-                "genes":       row["genes"],
-                "size":        row["size"],
-                "active_in":   row["active_in"],
-                "name":        annotation["name"],
-                "description": annotation["description"],
-            })
+            writer.writerow(
+                {
+                    "program": pid,
+                    "genes": row["genes"],
+                    "size": row["size"],
+                    "active_in": row["active_in"],
+                    "name": annotation["name"],
+                    "description": annotation["description"],
+                }
+            )
             out_f.flush()
     finally:
         out_f.close()
