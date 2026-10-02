@@ -1,0 +1,109 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##bcftoolsVersion=1.11+htslib-1.11
+##bcftoolsCommand=mpileup --threads 8 -Ou -f /lab/solexa_weissman/wcolgan/reference/cellranger/mm10_PETS/fasta/genome.fa -q 20 -Q 20 -a AD,DP,SP e75_rep4_t1.bam
+##reference=file:///lab/solexa_weissman/wcolgan/reference/cellranger/mm10_PETS/fasta/genome.fa
+##contig=<ID=chr1,length=195471971>
+##contig=<ID=chr10,length=130694993>
+##contig=<ID=chr11,length=122082543>
+##contig=<ID=chr12,length=120129022>
+##contig=<ID=chr13,length=120421639>
+##contig=<ID=chr14,length=124902244>
+##contig=<ID=chr15,length=104043685>
+##contig=<ID=chr16,length=98207768>
+##contig=<ID=chr17,length=94987271>
+##contig=<ID=chr18,length=90702639>
+##contig=<ID=chr19,length=61431566>
+##contig=<ID=chr2,length=182113224>
+##contig=<ID=chr3,length=160039680>
+##contig=<ID=chr4,length=156508116>
+##contig=<ID=chr5,length=151834684>
+##contig=<ID=chr6,length=149736546>
+##contig=<ID=chr7,length=145441459>
+##contig=<ID=chr8,length=129401213>
+##contig=<ID=chr9,length=124595110>
+##contig=<ID=chrM,length=16299>
+##contig=<ID=chrX,length=171031299>
+##contig=<ID=chrY,length=91744698>
+##contig=<ID=JH584299.1,length=953012>
+##contig=<ID=GL456233.1,length=336933>
+##contig=<ID=JH584301.1,length=259875>
+##contig=<ID=GL456211.1,length=241735>
+##contig=<ID=GL456350.1,length=227966>
+##contig=<ID=JH584293.1,length=207968>
+##contig=<ID=GL456221.1,length=206961>
+##contig=<ID=JH584297.1,length=205776>
+##contig=<ID=JH584296.1,length=199368>
+##contig=<ID=GL456354.1,length=195993>
+##contig=<ID=JH584294.1,length=191905>
+##contig=<ID=JH584298.1,length=184189>
+##contig=<ID=JH584300.1,length=182347>
+##contig=<ID=GL456219.1,length=175968>
+##contig=<ID=GL456210.1,length=169725>
+##contig=<ID=JH584303.1,length=158099>
+##contig=<ID=JH584302.1,length=155838>
+##contig=<ID=GL456212.1,length=153618>
+##contig=<ID=JH584304.1,length=114452>
+##contig=<ID=GL456379.1,length=72385>
+##contig=<ID=GL456216.1,length=66673>
+##contig=<ID=GL456393.1,length=55711>
+##contig=<ID=GL456366.1,length=47073>
+##contig=<ID=GL456367.1,length=42057>
+##contig=<ID=GL456239.1,length=40056>
+##contig=<ID=GL456213.1,length=39340>
+##contig=<ID=GL456383.1,length=38659>
+##contig=<ID=GL456385.1,length=35240>
+##contig=<ID=GL456360.1,length=31704>
+##contig=<ID=GL456378.1,length=31602>
+##contig=<ID=GL456389.1,length=28772>
+##contig=<ID=GL456372.1,length=28664>
+##contig=<ID=GL456370.1,length=26764>
+##contig=<ID=GL456381.1,length=25871>
+##contig=<ID=GL456387.1,length=24685>
+##contig=<ID=GL456390.1,length=24668>
+##contig=<ID=GL456394.1,length=24323>
+##contig=<ID=GL456392.1,length=23629>
+##contig=<ID=GL456382.1,length=23158>
+##contig=<ID=GL456359.1,length=22974>
+##contig=<ID=GL456396.1,length=21240>
+##contig=<ID=GL456368.1,length=20208>
+##contig=<ID=JH584292.1,length=14945>
+##contig=<ID=JH584295.1,length=1976>
+##ALT=<ID=*,Description="Represents allele(s) other than observed.">
+##INFO=<ID=INDEL,Number=0,Type=Flag,Description="Indicates that the variant is an INDEL.">
+##INFO=<ID=IDV,Number=1,Type=Integer,Description="Maximum number of raw reads supporting an indel">
+##INFO=<ID=IMF,Number=1,Type=Float,Description="Maximum fraction of raw reads supporting an indel">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Raw read depth">
+##INFO=<ID=VDB,Number=1,Type=Float,Description="Variant Distance Bias for filtering splice-site artefacts in RNA-seq data (bigger is better)",Version="3">
+##INFO=<ID=RPB,Number=1,Type=Float,Description="Mann-Whitney U test of Read Position Bias (bigger is better)">
+##INFO=<ID=MQB,Number=1,Type=Float,Description="Mann-Whitney U test of Mapping Quality Bias (bigger is better)">
+##INFO=<ID=BQB,Number=1,Type=Float,Description="Mann-Whitney U test of Base Quality Bias (bigger is better)">
+##INFO=<ID=MQSB,Number=1,Type=Float,Description="Mann-Whitney U test of Mapping Quality vs Strand Bias (bigger is better)">
+##INFO=<ID=SGB,Number=1,Type=Float,Description="Segregation based metric.">
+##INFO=<ID=MQ0F,Number=1,Type=Float,Description="Fraction of MQ0 reads (smaller is better)">
+##INFO=<ID=ICB,Number=1,Type=Float,Description="Inbreeding Coefficient Binomial test (bigger is better)">
+##INFO=<ID=HOB,Number=1,Type=Float,Description="Bias in the number of HOMs number (smaller is better)">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
+##INFO=<ID=MQ,Number=1,Type=Integer,Description="Average mapping quality">
+##bcftools_callVersion=1.11+htslib-1.11
+##bcftools_callCommand=call --threads 8 -mv -Ou; Date=Fri Dec 12 11:01:44 2025
+##bcftools_normVersion=1.11+htslib-1.11
+##bcftools_normCommand=norm --threads 8 -f /lab/solexa_weissman/wcolgan/reference/cellranger/mm10_PETS/fasta/genome.fa -Oz -o raw.vcf.gz; Date=Fri Dec 12 11:02:10 2025
+##bcftools_filterVersion=1.11+htslib-1.11
+##bcftools_filterCommand=filter -i 'FORMAT/DP>=250 && QUAL>=50 && GT="het"' -Oz -o highcov.vcf.gz raw.vcf; Date=Sat Dec 13 15:11:16 2025
+##bcftools_viewVersion=1.11+htslib-1.11
+##bcftools_viewCommand=view highcov.vcf.gz; Date=Sat Dec 13 15:11:24 2025
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr1	152393350	.	A	G	93	PASS	DP=276
+chr10	121246454	.	C	T	87	PASS	DP=319
+chr11	53321412	.	G	A	86	PASS	DP=321
+chr12	79128154	.	T	C	89	PASS	DP=294
+chr15	73965191	.	A	G	61	PASS	DP=306
+chr2	146291158	.	T	C	64	PASS	DP=285
+chr4	148519111	.	A	G	65	PASS	DP=342
+chr8	123301496	.	A	C	56	PASS	DP=357
+chr9	59586373	.	G	A	77	PASS	DP=264
+chr9	85602873	.	C	T	99	PASS	DP=269
+chr9	86440550	.	A	C	67	PASS	DP=284
