@@ -17,20 +17,18 @@ it stays current as jobs complete without any cross-job write races.
 import argparse
 import glob
 import os
-import socket
 import threading
 import time
 import traceback
 
-import numpy as np
-import networkx as nx
-import pandas as pd
-
-import treedata as td  # noqa: F401  (registers accessors used downstream)
-import pycea as py
 import cassiopeia as cas
-import tracertools
+import networkx as nx
+import numpy as np
+import pandas as pd
+import pycea as py
 import pylaml
+import tracertools
+import treedata as td  # noqa: F401  (registers accessors used downstream)
 
 # --------------------------------------------------------------------------- #
 # Benchmark grid
@@ -60,6 +58,7 @@ def get_mutation_rate(tdata, edit_frac):
 
 
 def embryo_fitness(parent, rng=None):
+    """Division callback that slows birth rate (scale 0.4) after time 2."""
     scale = 1
     if parent["time"] > 2:
         scale = 0.4
@@ -72,9 +71,7 @@ def simulate(num_extant, seed):
         num_extant=num_extant,
         on_division=embryo_fitness,
         random_seed=seed,
-        birth_waiting_distribution=lambda scale, rng: rng.lognormal(
-            mean=np.log(scale), sigma=0.1
-        ),
+        birth_waiting_distribution=lambda scale, rng: rng.lognormal(mean=np.log(scale), sigma=0.1),
     )
     rate = get_mutation_rate(tdata, 0.5)
     cas.sim.stochastic_tracing(
@@ -84,7 +81,7 @@ def simulate(num_extant, seed):
         random_seed=seed,
         state_priors={str(i): 1 / 8 for i in range(1, 9)},
     )
-    #cas.sim.missing_data(tdata, stochastic_rate=0.05, random_seed=seed)
+    # cas.sim.missing_data(tdata, stochastic_rate=0.05, random_seed=seed)
     return tdata
 
 
@@ -92,24 +89,30 @@ def simulate(num_extant, seed):
 # Solvers (ported from simulate.py). Each stores its tree under obst[name].
 # --------------------------------------------------------------------------- #
 def fasttree(tdata):
+    """Reconstruct a tree from the character matrix with FastTree into ``obst["fasttree"]``."""
     tdata.obst["fasttree"] = tracertools.solver.fasttree(tdata.obsm["characters"])
 
 
 def hybrid(tdata):
+    """Reconstruct a tree with a greedy stump plus per-clade FastTree subtrees into ``obst["hybrid"]``.
+
+    The stump is built with ``n_mutation_greedy``; each stump clade is then solved
+    with FastTree on its informative characters and grafted back onto the stump.
+    """
     tdata.obst["stump"] = tracertools.solver.n_mutation_greedy(tdata.obsm["characters"])[0]
     tdata.obs["clade"] = py.get.node_df(tdata, tree="stump")["parent"]
     clade_trees = {}
     for clade in tdata.obs["clade"].dropna().unique():
         clade_characters = tdata[tdata.obs["clade"] == clade].obsm["characters"]
         use_characters = tracertools.utils.select_characters(clade_characters)
-        clade_trees[clade] = tracertools.solver.fasttree(
-            clade_characters[use_characters], root_name=clade
-        )
+        clade_trees[clade] = tracertools.solver.fasttree(clade_characters[use_characters], root_name=clade)
     tdata.obst["hybrid"] = tracertools.tree.replace_subtrees(
         tdata.obst["stump"], list(clade_trees.values()), error_on_missing=True
     )
 
+
 def laml(tdata):
+    """Reconstruct a tree with LAML topology search (FastTree-initialized) into ``obst["laml"]``."""
     characters = tdata.obsm["characters"]
     initial_tree = tracertools.solver.fasttree(characters)
     # Convert node names to integers for the LAML solver
@@ -124,13 +127,14 @@ def laml(tdata):
             i += 1
     int_to_node = {v: k for k, v in node_to_int.items()}
     # Format input for the LAML solver
-    edges = list(nx.dfs_edges(initial_tree,source = "root"))
+    edges = list(nx.dfs_edges(initial_tree, source="root"))
     tree = pylaml.make_tree(
-        edges=[(node_to_int[edge[0]], node_to_int[edge[1]]) for edge in edges]
-        ,branch_lengths=[1] * len(edges) + [0.0],num_leaves = tdata.shape[0])
-    char_matrix = characters.astype(str).replace(
-        "*", "0").replace("-", "-1").astype(np.int32).values
-    priors = np.ones((char_matrix.shape[1], 8)) * .125
+        edges=[(node_to_int[edge[0]], node_to_int[edge[1]]) for edge in edges],
+        branch_lengths=[1] * len(edges) + [0.0],
+        num_leaves=tdata.shape[0],
+    )
+    char_matrix = characters.astype(str).replace("*", "0").replace("-", "-1").astype(np.int32).values
+    priors = np.ones((char_matrix.shape[1], 8)) * 0.125
     # Perform the LAML topology search
     result = pylaml.topology_search(
         tree=tree,
@@ -139,10 +143,12 @@ def laml(tdata):
         initial_phi=0.01,
         ultrametric=True,
         mutation_priors=priors,
-        verbose=False
+        verbose=False,
     )
-    tdata.obst["laml"] = nx.DiGraph([(int_to_node[edge[0]], int_to_node[edge[1]]) 
-                                     for edge in result.optimized_tree['edges']])
+    tdata.obst["laml"] = nx.DiGraph(
+        [(int_to_node[edge[0]], int_to_node[edge[1]]) for edge in result.optimized_tree["edges"]]
+    )
+
 
 SOLVER_FUNCS = {
     "nj": lambda x: cas.solver.nj(x),
@@ -150,7 +156,7 @@ SOLVER_FUNCS = {
     "greedy": lambda x: cas.solver.greedy(x),
     "fasttree": fasttree,
     "hybrid": hybrid,
-    "laml": laml
+    "laml": laml,
 }
 
 
@@ -186,7 +192,7 @@ def run_with_memory(func, tdata, interval=0.05):
                 rss = tree_rss()
                 if rss > peak:
                     peak = rss
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             stop.wait(interval)
 
@@ -215,7 +221,7 @@ def aggregate(outdir):
     for f in files:
         try:
             frames.append(pd.read_csv(f))
-        except Exception:
+        except Exception:  # noqa: BLE001
             # A row file may be mid-write by another job; skip it this round.
             continue
     if not frames:
@@ -232,6 +238,16 @@ def aggregate(outdir):
 # Single job
 # --------------------------------------------------------------------------- #
 def run_job(num_extant, solver, iteration, outdir):
+    """Simulate one tree, run ``solver`` with time/memory tracking, score RF, and write its row file.
+
+    Errors are recorded in the row (``status``/``error``) rather than raised. The
+    master CSV is rebuilt afterwards.
+
+    Returns
+    -------
+    dict
+        The result record for this job.
+    """
     rows_dir = os.path.join(outdir, "rows")
     os.makedirs(rows_dir, exist_ok=True)
 
@@ -256,7 +272,7 @@ def run_job(num_extant, solver, iteration, outdir):
 
         rf, rf_max = cas.critique.robinson_foulds(tdata, key1="simulated", key2=solver)
         record["rf_norm"] = rf / rf_max if rf_max else np.nan
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         record["status"] = "error"
         record["error"] = f"{type(exc).__name__}: {exc}"
         traceback.print_exc()
@@ -278,6 +294,7 @@ def run_job(num_extant, solver, iteration, outdir):
 # CLI
 # --------------------------------------------------------------------------- #
 def main():
+    """Resolve the grid configuration from CLI args or ``$SLURM_ARRAY_TASK_ID`` and run it."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--outdir",

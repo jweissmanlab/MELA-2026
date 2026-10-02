@@ -18,16 +18,14 @@ cross-job write races.
 import argparse
 import glob
 import os
-import socket
 import traceback
 
+import cassiopeia as cas
 import numpy as np
 import pandas as pd
-
-import treedata as td  # noqa: F401  (registers accessors used downstream)
 import pycea as py
-import cassiopeia as cas
 import tracertools
+import treedata as td  # noqa: F401  (registers accessors used downstream)
 
 # --------------------------------------------------------------------------- #
 # Benchmark grid
@@ -58,6 +56,7 @@ def get_mutation_rate(tdata, edit_frac):
 
 
 def embryo_fitness(parent, rng=None):
+    """Division callback that slows birth rate (scale 0.4) after time 2."""
     scale = 1
     if parent["time"] > 2:
         scale = 0.4
@@ -70,9 +69,7 @@ def simulate(n_cassettes, sigma, seed):
         num_extant=NUM_EXTANT,
         on_division=embryo_fitness,
         random_seed=seed,
-        birth_waiting_distribution=lambda scale, rng: rng.lognormal(
-            mean=np.log(scale), sigma=sigma
-        ),
+        birth_waiting_distribution=lambda scale, rng: rng.lognormal(mean=np.log(scale), sigma=sigma),
     )
     cas.sim.stochastic_tracing(
         tdata,
@@ -98,7 +95,7 @@ def aggregate(outdir):
     for f in files:
         try:
             frames.append(pd.read_csv(f))
-        except Exception:
+        except Exception:  # noqa: BLE001
             # A row file may be mid-write by another job; skip it this round.
             continue
     if not frames:
@@ -117,6 +114,16 @@ def aggregate(outdir):
 # Single job
 # --------------------------------------------------------------------------- #
 def run_job(n_cassettes, sigma, iteration, outdir):
+    """Simulate one configuration, score ConvexML node-time MAE, and write its row file.
+
+    Errors are recorded in the row (``status``/``error``) rather than raised. The
+    master CSV is rebuilt afterwards.
+
+    Returns
+    -------
+    dict
+        The result record for this job.
+    """
     rows_dir = os.path.join(outdir, "rows")
     os.makedirs(rows_dir, exist_ok=True)
 
@@ -136,23 +143,18 @@ def run_job(n_cassettes, sigma, iteration, outdir):
         record["n_leaves"] = tdata.shape[0]
         record["n_characters"] = tdata.obsm["characters"].shape[1]
 
-        tracertools.tree.estimate_branch_lengths(
-            tdata.obst["simulated"], key_added="convexml_time", pseudo_count=1
-        )
+        tracertools.tree.estimate_branch_lengths(tdata.obst["simulated"], key_added="convexml_time", pseudo_count=1)
         node_df = py.get.node_df(tdata).query("time != 1").copy()
         record["mae"] = (abs(node_df["time"] - node_df["convexml_time"])).mean()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         record["status"] = "error"
         record["error"] = f"{type(exc).__name__}: {exc}"
         traceback.print_exc()
 
-    row_path = os.path.join(
-        rows_dir, f"row_cas{n_cassettes}_sigma{sigma}_{iteration}.csv"
-    )
+    row_path = os.path.join(rows_dir, f"row_cas{n_cassettes}_sigma{sigma}_{iteration}.csv")
     pd.DataFrame([record]).to_csv(row_path, index=False)
     print(
-        f"[{record['status']}] cassettes={n_cassettes} sigma={sigma} "
-        f"iter={iteration} mae={record['mae']}",
+        f"[{record['status']}] cassettes={n_cassettes} sigma={sigma} " f"iter={iteration} mae={record['mae']}",
         flush=True,
     )
 
@@ -164,12 +166,11 @@ def run_job(n_cassettes, sigma, iteration, outdir):
 # CLI
 # --------------------------------------------------------------------------- #
 def main():
+    """Resolve the grid configuration from CLI args or ``$SLURM_ARRAY_TASK_ID`` and run it."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--outdir",
-        default=os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "results_ble"
-        ),
+        default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "results_ble"),
         help="Directory for row files and the master CSV.",
     )
     parser.add_argument(
@@ -182,9 +183,7 @@ def main():
     parser.add_argument("--cassettes", type=int, help="Override: number_of_cassettes.")
     parser.add_argument("--sigma", type=float, help="Override: division_sigma.")
     parser.add_argument("--iter", type=int, help="Override: iteration index.")
-    parser.add_argument(
-        "--n-configs", action="store_true", help="Print grid size and exit."
-    )
+    parser.add_argument("--n-configs", action="store_true", help="Print grid size and exit.")
     args = parser.parse_args()
 
     configs = build_configs()

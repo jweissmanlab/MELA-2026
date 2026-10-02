@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=ble
-#SBATCH --partition=24
+#SBATCH --partition=20
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -16,11 +16,12 @@
 
 set -euo pipefail
 
-SIM_DIR="/lab/solexa_weissman/wcolgan/devmap-paper/simulation"
+# Run from the simulation/ directory (sbatch 3_benchmark_ble.slurm).
+SIM_DIR="${SLURM_SUBMIT_DIR:-$(pwd)}"
 cd "$SIM_DIR"
 
 # Activate the devmap conda environment.
-source /lab/solexa_weissman/wcolgan/tools/miniconda3/etc/profile.d/conda.sh
+eval "$(conda shell.bash hook)"
 conda activate devmap
 
 # Keep numeric libraries from oversubscribing the allocated CPUs.

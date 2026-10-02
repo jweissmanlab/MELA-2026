@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=benchmark
-#SBATCH --partition=24
+#SBATCH --partition=20
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -15,11 +15,12 @@
 
 set -euo pipefail
 
-SIM_DIR="/lab/solexa_weissman/wcolgan/devmap-paper/simulation"
+# Run from the simulation/ directory (sbatch 1_benchmark_solver.slurm).
+SIM_DIR="${SLURM_SUBMIT_DIR:-$(pwd)}"
 cd "$SIM_DIR"
 
 # Activate the devmap conda environment.
-source /lab/solexa_weissman/wcolgan/tools/miniconda3/etc/profile.d/conda.sh
+eval "$(conda shell.bash hook)"
 conda activate devmap
 
 # Keep numeric libraries from oversubscribing the allocated CPUs.
@@ -27,4 +28,4 @@ export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-4}
 export OPENBLAS_NUM_THREADS=${SLURM_CPUS_PER_TASK:-4}
 export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK:-4}
 
-python benchmark.py --outdir "$SIM_DIR/results"
+python benchmark_solver.py --outdir "$SIM_DIR/results_solver"
