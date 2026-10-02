@@ -1,7 +1,12 @@
+import matplotlib.pyplot as plt
 import networkx as nx
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pycea as py
+import seaborn as sns
+from scipy.spatial.distance import pdist, squareform
+from statsmodels.stats.multitest import multipletests
+
 
 def identify_fate_progenitors(
     tree: nx.DiGraph,
@@ -95,7 +100,7 @@ def identify_fate_progenitors(
         DataFrame — index is leaf node with columns:
           progenitor  - assigned progenitor node (or None)
           fate        - assigned fate name (or None)
-    """
+    """  # noqa: D205
     if not nx.is_directed_acyclic_graph(tree):
         raise ValueError("tree must be a DAG.")
 
@@ -109,14 +114,11 @@ def identify_fate_progenitors(
     first_node = topo_order[0]
     sample_val = tree.nodes[first_node][key]
 
-    if isinstance(sample_val, (list, tuple, np.ndarray)):
+    if isinstance(sample_val, list | tuple | np.ndarray):
         # Multi-fate mode (counts vector)
         multi_fate = True
         if fate_names is None:
-            raise ValueError(
-                "fate_names is required in multi-fate mode "
-                "(node attribute is a list/array)."
-            )
+            raise ValueError("fate_names is required in multi-fate mode " "(node attribute is a list/array).")
         n_fates = len(fate_names)
         if len(sample_val) != n_fates:
             raise ValueError(
@@ -128,17 +130,13 @@ def identify_fate_progenitors(
         ignored_fates = ignored_fates or []
         unknown = set(ignored_fates) - set(fate_names)
         if unknown:
-            raise ValueError(
-                f"ignored_fates contains names not found in fate_names: {unknown}"
-            )
+            raise ValueError(f"ignored_fates contains names not found in fate_names: {unknown}")
         ignored_indices = {fate_names.index(f) for f in ignored_fates}
 
-    elif isinstance(sample_val, (int, float, np.integer, np.floating)):
+    elif isinstance(sample_val, int | float | np.integer | np.floating):
         # Single-fate mode (scalar fraction)
         if ignored_fates:
-            raise ValueError(
-                "ignored_fates is not supported in single-fate mode."
-            )
+            raise ValueError("ignored_fates is not supported in single-fate mode.")
         multi_fate = False
         fate_names = [key]
         n_fates = 1
@@ -151,17 +149,23 @@ def identify_fate_progenitors(
 
     # -- helpers -----------------------------------------------------------
     if multi_fate:
+
         def _counts(n):
+            """Per-fate counts vector stored on node n."""
             return tree.nodes[n][key]
 
         def _total(n):
+            """Total count across all fates (including ignored fates) for node n."""
             return sum(_counts(n))
 
         def _fate_frac(n, fi):
+            """Fraction of node n's counts belonging to fate index fi (0.0 if total is 0)."""
             t = _total(n)
             return _counts(n)[fi] / t if t > 0 else 0.0
     else:
+
         def _fate_frac(n, fi):
+            """Scalar fate fraction stored on node n (fi is ignored in single-fate mode)."""
             return float(tree.nodes[n][key])
 
     # -- Pass 1: bottom-up qualification per fate --------------------------
@@ -200,10 +204,7 @@ def identify_fate_progenitors(
 
             # (c) bubble-up through polytomies only, single level
             if len(children) > 2:
-                direct_qual = [
-                    c for c in children
-                    if qualifies[fi][c] and via[fi][c] == "direct"
-                ]
+                direct_qual = [c for c in children if qualifies[fi][c] and via[fi][c] == "direct"]
                 if len(direct_qual) > 1:
                     qualifies[fi][node] = True
                     via[fi][node] = "bubble_up"
@@ -226,10 +227,9 @@ def identify_fate_progenitors(
 
     for node in topo_order:
         node_fates = [
-            fi for fi in range(n_fates)
-            if fi not in ignored_indices
-            and qualifies[fi][node]
-            and node not in skip_fate[fi]
+            fi
+            for fi in range(n_fates)
+            if fi not in ignored_indices and qualifies[fi][node] and node not in skip_fate[fi]
         ]
         if not node_fates:
             continue
@@ -249,23 +249,21 @@ def identify_fate_progenitors(
             skip_fate[fi].update(pruned)
             progenitor_leaves[fi][node] = claimed
 
-            fate_desc = sum(
-                1 for lf in claimed if _fate_frac(lf, fi) >= threshold
-            )
+            fate_desc = sum(1 for lf in claimed if _fate_frac(lf, fi) >= threshold)
             total_desc = len(claimed)
 
-            all_records.append({
-                "node":              node,
-                "fate":              fate_names[fi],
-                "fate_descendants":  fate_desc,
-                "total_descendants": total_desc,
-                "fate_fraction":     (
-                    round(fate_desc / total_desc, 4) if total_desc > 0 else 0.0
-                ),
-                "time":              tree.nodes[node][time_attr],
-                "n_children":        tree.out_degree(node),
-                "qualified_via":     via[fi][node],
-            })
+            all_records.append(
+                {
+                    "node": node,
+                    "fate": fate_names[fi],
+                    "fate_descendants": fate_desc,
+                    "total_descendants": total_desc,
+                    "fate_fraction": (round(fate_desc / total_desc, 4) if total_desc > 0 else 0.0),
+                    "time": tree.nodes[node][time_attr],
+                    "n_children": tree.out_degree(node),
+                    "qualified_via": via[fi][node],
+                }
+            )
 
     # -- Build leaf -> progenitor mapping ----------------------------------
     all_leaves = [n for n in tree.nodes if tree.out_degree(n) == 0]
@@ -279,14 +277,65 @@ def identify_fate_progenitors(
     leaf_df = pd.DataFrame.from_dict(leaf_records, orient="index")
     leaf_df.index.name = "leaf"
 
-    df = pd.DataFrame(all_records, columns=[
-        "node", "fate", "fate_descendants", "total_descendants",
-        "fate_fraction", "time", "n_children", "qualified_via",
-    ])
+    df = pd.DataFrame(
+        all_records,
+        columns=[
+            "node",
+            "fate",
+            "fate_descendants",
+            "total_descendants",
+            "fate_fraction",
+            "time",
+            "n_children",
+            "qualified_via",
+        ],
+    )
 
     return df, leaf_df
 
-def get_fate_progenitors(tdata, key, key_added="progenitors", min_descendants=1):
+
+def get_fate_progenitors(tdata, key, key_added="progenitors", min_descendants=2):
+    """
+    Identify fate-restricted progenitor nodes across all clone trees in a TreeData.
+
+    Runs :func:`identify_fate_progenitors` (with its default threshold of 0.9)
+    on every tree in ``tdata.obst``, concatenates the per-clone results, and
+    annotates each progenitor with its clone, stage, and embryo. Leaves are
+    assigned to the progenitor that claims them and the assignment is written
+    to ``tdata.obs[key_added]``.
+
+    If *key* is in ``tdata.obsm`` it is treated as a per-fate counts table:
+    its columns are used as the fate names (multi-fate mode). In that case, if
+    ``tdata.obs["n"]`` does not exist, it is created (all 1) and summed onto
+    the tree nodes with ``py.tl.ancestral_states``. Otherwise *key* is treated
+    as a scalar fate-fraction node attribute (single-fate mode). In both cases
+    the tree nodes must already carry a *key* attribute and a ``time``
+    attribute.
+
+    Parameters
+    ----------
+    tdata : td.TreeData
+        TreeData with per-clone trees in ``.obst``. Modified in place.
+    key : str
+        Node attribute holding fate counts (if also a key in ``tdata.obsm``)
+        or a scalar fate fraction.
+    key_added : str
+        Column in ``tdata.obs`` where each leaf's assigned progenitor node is
+        stored. Defaults to "progenitors".
+    min_descendants : int | None
+        Keep only progenitors with ``fate_descendants >= min_descendants``;
+        leaves assigned to discarded progenitors are left unassigned. If None,
+        no filtering is applied. Defaults to 2.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per (progenitor, fate) pair, indexed by node, with the columns
+        returned by :func:`identify_fate_progenitors` plus:
+          clone   - clone ID (key in ``tdata.obst``)
+          stage   - portion of the clone ID before "-R" (e.g. "E8.5")
+          embryo  - portion of the clone ID before "-C" (e.g. "E8.5-R1")
+    """
     is_counts = key in tdata.obsm
     if is_counts:
         fate_names = tdata.obsm[key].columns
@@ -314,13 +363,14 @@ def get_fate_progenitors(tdata, key, key_added="progenitors", min_descendants=1)
     progenitors["embryo"] = progenitors["clone"].str.split("-C").str[0]
 
     if min_descendants is not None:
-        progenitors = progenitors.query("fate_descendants > @min_descendants").copy()
+        progenitors = progenitors.query("fate_descendants >= @min_descendants").copy()
         leaf_assignments = leaf_assignments.query("progenitor in @progenitors.node").copy()
 
     tdata.obs[key_added] = leaf_assignments["progenitor"]
     progenitors.index = progenitors["node"].values
 
     return progenitors
+
 
 def compute_pmi(df, group_col, cat_col, min_count=1, smoothing=0.0):
     """
@@ -342,7 +392,6 @@ def compute_pmi(df, group_col, cat_col, min_count=1, smoothing=0.0):
     pmi : DataFrame
     npmi : DataFrame
     """
-
     # 1. Remove duplicates (important!)
     df = df.drop_duplicates([group_col, cat_col])
 
@@ -371,13 +420,13 @@ def compute_pmi(df, group_col, cat_col, min_count=1, smoothing=0.0):
     P_i_P_j = np.outer(P_i, P_i)
 
     # 6. PMI
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         pmi = np.log(P_ij / P_i_P_j)
 
     pmi = pd.DataFrame(pmi, index=cooc.index, columns=cooc.columns)
 
     # 7. NPMI (normalized PMI)
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         npmi = pmi / (-np.log(P_ij))
 
     npmi = pd.DataFrame(npmi, index=cooc.index, columns=cooc.columns)
@@ -389,3 +438,360 @@ def compute_pmi(df, group_col, cat_col, min_count=1, smoothing=0.0):
         npmi = npmi.where(mask)
 
     return cooc, pmi, npmi
+
+
+def leaves_below(G, node):
+    """
+    Return the leaf descendants of a node.
+
+    Parameters
+    ----------
+    G : nx.DiGraph
+        Rooted tree.
+    node : hashable
+        Node whose descendant leaves are returned.
+
+    Returns
+    -------
+    list
+        Nodes in ``nx.descendants(G, node)`` with out-degree 0. The query node
+        itself is not included, even if it is a leaf.
+    """
+    descendants = nx.descendants(G, node)
+    leaves = [n for n in descendants if G.out_degree(n) == 0]
+    return leaves
+
+
+def mark_sibling_descendants(tdata, progenitors, key_added="sibling_descendants"):
+    """
+    Mark cells descending from the sibling clade of each progenitor.
+
+    For each progenitor, the reference node is the progenitor itself if it
+    qualified via "bubble_up", otherwise its parent. All leaves below the
+    reference node (which include the progenitor's own leaves) are labeled
+    with the progenitor node ID. Progenitors whose reference node has more
+    than ``5 * fate_descendants`` leaves are skipped. Clones with empty trees
+    are skipped. Later progenitors overwrite earlier labels on shared cells.
+
+    Parameters
+    ----------
+    tdata : td.TreeData
+        TreeData with per-clone trees in ``.obst``. ``tdata.obs`` is modified
+        in place.
+    progenitors : pd.DataFrame
+        Progenitor table (e.g. from :func:`get_fate_progenitors`) with columns
+        ``clone``, ``node``, ``qualified_via``, ``fate_descendants`` and
+        ``time``.
+    key_added : str
+        Column in ``tdata.obs`` to store the progenitor node ID for marked
+        cells (initialized to ``pd.NA``). Defaults to "sibling_descendants".
+
+    Returns
+    -------
+    None
+        Writes ``tdata.obs[key_added]`` and ``tdata.obs["parent_time"]`` (the
+        progenitor's ``time`` value) for marked cells.
+    """
+    tdata.obs[key_added] = pd.NA
+    for clone in progenitors["clone"].unique():
+        tree = tdata.obst[clone]
+        if len(tree) == 0:
+            continue
+        clone_progenitors = progenitors.query("clone == @clone")
+        for _, prog in clone_progenitors.iterrows():
+            if prog["qualified_via"] == "bubble_up":
+                sibling = prog["node"]
+                sibling_leaves = leaves_below(tree, sibling)
+            else:
+                sibling = list(tree.predecessors(prog["node"]))[0]
+                sibling_leaves = leaves_below(tree, sibling)
+            if len(sibling_leaves) > 5 * prog["fate_descendants"]:
+                continue
+            tdata.obs.loc[sibling_leaves, key_added] = prog["node"]
+            tdata.obs.loc[sibling_leaves, "parent_time"] = prog["time"]
+
+
+def bipotency_permutation_test(
+    progenitors,
+    lineages=("Autonomic", "Sensory"),
+    n_permutations=100,
+    n_bins=10,
+    random_state=None,
+    size_key="fate_descendants",
+    bipotent_color="#FFAA00",
+    ax=None,
+):
+    """
+    Size-stratified permutation test of co-occurrence of two outputs within clades.
+
+    A clade is "bipotent" if it produces both lineages *a* and *b*. The
+    observed statistic is the fraction of clades producing *a* or *b* that
+    produce both. The null distribution is generated by independently
+    permuting the *a* and *b* indicators across clades within quantile bins
+    of clade size (*size_key*), preserving the size dependence of each
+    output, and recomputing the bipotent fraction. Results are plotted as a
+    bar chart (observed vs. permuted; error bars span the 2.5-97.5
+    percentiles) overlaid with per-embryo observed percentages. A summary
+    table of the exclusive-*a*, exclusive-*b* and bipotent fractions and
+    counts among differentiated clades is printed. No p-value is computed.
+
+    Parameters
+    ----------
+    progenitors : pd.DataFrame
+        One row per clade, with boolean columns named by *lineages*, an
+        ``embryo`` column, and the *size_key* column.
+    lineages : tuple[str, str]
+        Names of the two boolean output columns to test. Defaults to
+        ("Autonomic", "Sensory").
+    n_permutations : int
+        Number of size-stratified permutations. Defaults to 100.
+    n_bins : int
+        Number of quantile bins of *size_key* used for stratification
+        (duplicate bin edges are dropped). Defaults to 10.
+    random_state : int | None
+        Seed for ``np.random.default_rng``.
+    size_key : str
+        Column used to stratify clades by size. Defaults to "fate_descendants".
+    bipotent_color : str
+        Bar color for the observed value. Defaults to "#FFAA00".
+    ax : matplotlib.axes.Axes | None
+        Axes to plot on. If None, a new 1 x 1.5 inch figure is created.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Figure containing the observed vs. permuted bipotent-percentage plot.
+    """
+    a, b = lineages
+    rng = np.random.default_rng(random_state)
+
+    df = progenitors.copy()
+    df["Both"] = df[a] & df[b]
+    differentiated = df[df[a] | df[b]]
+
+    summary = pd.DataFrame(
+        {
+            "category": [a, b, "Both"],
+            "fraction": [
+                differentiated[a].mean() - differentiated["Both"].mean(),
+                differentiated[b].mean() - differentiated["Both"].mean(),
+                differentiated["Both"].mean(),
+            ],
+            "count": [
+                differentiated[a].sum() - differentiated["Both"].sum(),
+                differentiated[b].sum() - differentiated["Both"].sum(),
+                differentiated["Both"].sum(),
+            ],
+        }
+    )
+
+    embryo_fracs = (
+        differentiated.groupby("embryo")["Both"].mean().mul(100).reset_index(name="bipotent_pct").assign(permuted=False)
+    )
+
+    df["size_bin"] = pd.qcut(df[size_key], n_bins, duplicates="drop")
+    rows = [{"permuted": False, "bipotent_frac": differentiated["Both"].mean()}]
+
+    for _ in range(n_permutations):
+        pa = df.groupby("size_bin", observed=True)[a].transform(lambda s: rng.permutation(s))
+        pb = df.groupby("size_bin", observed=True)[b].transform(lambda s: rng.permutation(s))
+        rows.append({"permuted": True, "bipotent_frac": (pa & pb)[pa | pb].mean()})
+
+    bipotent_fracs = pd.DataFrame(rows)
+    bipotent_fracs["bipotent_pct"] = 100 * bipotent_fracs["bipotent_frac"]
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(1, 1.5), dpi=600)
+    else:
+        fig = ax.figure
+
+    sns.barplot(
+        data=bipotent_fracs,
+        x="permuted",
+        hue="permuted",
+        y="bipotent_pct",
+        palette=[bipotent_color, "#CCCCCC"],
+        errorbar=lambda x: np.percentile(x, [2.5, 97.5]),
+        saturation=1,
+        legend=False,
+        capsize=0.3,
+        err_kws={"linewidth": 0.8, "color": "black"},
+        ax=ax,
+    )
+
+    sns.stripplot(
+        data=embryo_fracs,
+        x="permuted",
+        y="bipotent_pct",
+        color="black",
+        size=2.5,
+        jitter=0,
+        ax=ax,
+        zorder=10,
+    )
+
+    ax.set(ylabel="Bipotent clades (%)", xlabel="")
+    ax.set_xticklabels(["Observed", "Permuted"], rotation=45, ha="right")
+    print(summary)
+
+    return fig
+
+
+def progenitor_dispersion_stratified_permutation(
+    adata,
+    group_col="progenitor",
+    strat_col="heart_field",
+    embedding_key="X_scvi",
+    n_permutations=1000,
+    metric="euclidean",
+    alternative="greater",
+    min_cells=10,
+    random_state=0,
+):
+    """
+    Permutation test of clade dispersion in an embedding against stratum-matched random cells.
+
+    For each group (progenitor clade) with at least *min_cells* cells, the
+    observed statistic is the mean pairwise distance between its cells in
+    ``adata.obsm[embedding_key]``. The group is assigned to its dominant
+    stratum (most frequent value of *strat_col* among its cells), and a null
+    distribution is built by repeatedly drawing the same number of cells
+    without replacement from all cells in that stratum. Null distributions
+    are cached and reused per (stratum, group size). Groups whose dominant
+    stratum contains fewer cells than the group are skipped. P-values use the
+    ``(k + 1) / (n_permutations + 1)`` correction and are adjusted with
+    Benjamini-Hochberg FDR. A dense all-by-all distance matrix is computed
+    up front, so memory scales quadratically with ``adata.n_obs``.
+
+    Parameters
+    ----------
+    adata : AnnData | td.TreeData
+        Cells to analyze.
+    group_col : str
+        Column in ``adata.obs`` defining the groups (clades). Defaults to
+        "progenitor".
+    strat_col : str
+        Column in ``adata.obs`` defining the strata used to build the null.
+        Defaults to "heart_field".
+    embedding_key : str
+        Key in ``adata.obsm`` of the embedding. Defaults to "X_scvi".
+    n_permutations : int
+        Number of random draws per null distribution. Defaults to 1000.
+    metric : str
+        Distance metric passed to ``scipy.spatial.distance.pdist``. Defaults
+        to "euclidean".
+    alternative : {"greater", "less", "two-sided"}
+        "greater" tests for more dispersion than the null, "less" for less
+        dispersion (tighter clustering), and "two-sided" for an absolute
+        deviation from the null mean. Defaults to "greater".
+    min_cells : int
+        Minimum number of cells for a group to be tested. Defaults to 10.
+    random_state : int | None
+        Seed for ``np.random.default_rng``. Defaults to 0.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per tested group, indexed by ``progenitor``, with columns:
+          n_cells     - number of cells in the group
+          heart_field - dominant stratum (named "heart_field" regardless of
+                        *strat_col*)
+          observed    - observed mean pairwise distance
+          null_mean   - mean of the null distribution
+          null_std    - standard deviation of the null (ddof=1)
+          z_score     - (observed - null_mean) / null_std (NaN if null_std is 0)
+          p_value     - permutation p-value
+          p_adj       - Benjamini-Hochberg adjusted p-value
+        Empty if no group is tested.
+
+    Raises
+    ------
+    ValueError
+        If *alternative* is not one of "greater", "less", "two-sided"
+        (raised when the first eligible group is tested).
+    """
+    rng = np.random.default_rng(random_state)
+
+    X = adata.obsm[embedding_key]
+    groups = adata.obs[group_col].to_numpy()
+    strata = adata.obs[strat_col].to_numpy()
+
+    # Precompute full pairwise distance matrix once
+    D = squareform(pdist(X, metric=metric))
+
+    def mean_upper_triangle(submatrix):
+        """Mean of the strictly upper-triangular entries of a square distance submatrix."""
+        n = submatrix.shape[0]
+        return submatrix[np.triu_indices(n, k=1)].mean()
+
+    # Cache cell indices for each heart_field
+    heart_field_to_idx = {hf: np.where(strata == hf)[0] for hf in pd.unique(strata)}
+
+    # Cache null distributions for each (heart_field, n_cells)
+    null_cache = {}
+
+    results = []
+
+    for prog in pd.unique(groups):
+        idx = np.where(groups == prog)[0]
+        n = len(idx)
+
+        if n < min_cells:
+            continue
+
+        # dominant heart_field for this progenitor
+        prog_hf_counts = pd.Series(strata[idx]).value_counts()
+        dominant_hf = prog_hf_counts.idxmax()
+
+        pool_idx = heart_field_to_idx[dominant_hf]
+        if len(pool_idx) < n:
+            continue
+
+        # observed mean pairwise distance
+        obs = mean_upper_triangle(D[np.ix_(idx, idx)])
+
+        cache_key = (dominant_hf, n)
+
+        if cache_key not in null_cache:
+            null = np.empty(n_permutations, dtype=float)
+            for i in range(n_permutations):
+                perm_idx = rng.choice(pool_idx, size=n, replace=False)
+                null[i] = mean_upper_triangle(D[np.ix_(perm_idx, perm_idx)])
+            null_cache[cache_key] = null
+        else:
+            null = null_cache[cache_key]
+
+        null_mean = null.mean()
+        null_std = null.std(ddof=1)
+
+        if alternative == "greater":
+            p = (np.sum(null >= obs) + 1) / (n_permutations + 1)
+        elif alternative == "less":
+            p = (np.sum(null <= obs) + 1) / (n_permutations + 1)
+        elif alternative == "two-sided":
+            p = (np.sum(np.abs(null - null_mean) >= np.abs(obs - null_mean)) + 1) / (n_permutations + 1)
+        else:
+            raise ValueError("alternative must be one of: 'greater', 'less', 'two-sided'")
+
+        z = np.nan if null_std == 0 else (obs - null_mean) / null_std
+
+        results.append(
+            {
+                "progenitor": prog,
+                "n_cells": n,
+                "heart_field": dominant_hf,
+                "observed": obs,
+                "null_mean": null_mean,
+                "null_std": null_std,
+                "z_score": z,
+                "p_value": p,
+            }
+        )
+
+    df = pd.DataFrame(results)
+
+    if df.empty:
+        return df.set_index("progenitor")
+
+    df["p_adj"] = multipletests(df["p_value"], method="fdr_bh")[1]
+    return df.set_index("progenitor")

@@ -1,17 +1,36 @@
-from pathlib import Path
 from importlib import resources
+from pathlib import Path
 
+import matplotlib as mpl
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
+import seaborn as sns
 
 # Paths
 base_path = Path(__file__).resolve().parent.parent
 
+
 # Default paths
 def get_paths(folder):
-    """Get the paths for the data and plots folders"""
+    """Get the base, plots, and results paths for an analysis folder.
+
+    Parameters
+    ----------
+    folder : str or Path
+        Analysis folder name (e.g. ``"fate"``), resolved relative to the repository
+        root. If the value contains a ``"/"``, its parent is used as the base path
+        and its final component as the folder name.
+
+    Returns
+    -------
+    base_path : Path
+        Repository root, or the parent of ``folder`` if a path was given.
+    plots_path : Path
+        ``base_path / folder / "plots"``. Not created by this function.
+    results_path : Path
+        ``base_path / folder / "results"``. Not created by this function.
+    """
     folder = Path(folder)
     if "/" in str(folder):
         base_path = folder.parent
@@ -20,34 +39,13 @@ def get_paths(folder):
         base_path = Path(__file__).resolve().parent.parent
     return base_path, base_path / folder / "plots", base_path / folder / "results"
 
+
 # Edits
-edit_ids = {'EMX1': {'*': 0,
-  'GGACA': 1,
-  'ACAAT': 2,
-  'CCCTA': 3,
-  'AGTAC': 4,
-  'CCGAT': 5,
-  'CCTTT': 6,
-  'ATCAA': 7,
-  'ATTCG': 8},
- 'RNF2': {'*': 0,
-  'ACAGT': 1,
-  'ACTTA': 2,
-  'TTCCT': 3,
-  'TATAT': 4,
-  'GTTCA': 5,
-  'TGCCA': 6,
-  'TCCAA': 7,
-  'ACTCC': 8},
- 'HEK3': {'*': 0,
-  'GATAG': 1,
-  'AATCG': 2,
-  'GCAAG': 3,
-  'GCGCC': 4,
-  'CTTTG': 5,
-  'ATCAA': 6,
-  'CTCTC': 7,
-  'ATTTA': 8}}
+edit_ids = {
+    "EMX1": {"*": 0, "GGACA": 1, "ACAAT": 2, "CCCTA": 3, "AGTAC": 4, "CCGAT": 5, "CCTTT": 6, "ATCAA": 7, "ATTCG": 8},
+    "RNF2": {"*": 0, "ACAGT": 1, "ACTTA": 2, "TTCCT": 3, "TATAT": 4, "GTTCA": 5, "TGCCA": 6, "TCCAA": 7, "ACTCC": 8},
+    "HEK3": {"*": 0, "GATAG": 1, "AATCG": 2, "GCAAG": 3, "GCGCC": 4, "CTTTG": 5, "ATCAA": 6, "CTCTC": 7, "ATTTA": 8},
+}
 
 # Default colors
 colors = [
@@ -78,9 +76,10 @@ colors = [
 sequential_colors = [(1, 1, 1)] + [plt.cm.GnBu(i / (256 - 1)) for i in range(256)]
 sequential_cmap = mcolors.LinearSegmentedColormap.from_list("GnBu", sequential_colors, N=256)
 cooc_cmap = mcolors.LinearSegmentedColormap.from_list(
-     "custom_diverging",
-     ["#149A9A", "#f7f7f7","#B35797" ]  # low → midpoint → high
+    "custom_diverging",
+    ["#149A9A", "#f7f7f7", "#B35797"],  # low → midpoint → high
 )
+lca_cmap = cmap = mpl.colormaps["RdPu"]
 
 # Discrete palettes
 discrete_colors = {
@@ -282,57 +281,100 @@ germ_layer_palette = {
 }
 
 stage_palette = {
- 'E7.5': '#8000ff',
- 'E8.0': '#1996f3',
- 'E8.5': '#4df3ce',
- 'E9.0': '#b2f396',
- 'E9.5': '#ff964f',
- 'E10.0': '#ff0000'}
-
-type_palette = {
-  "donor":"#1874CD",
-  "host":"#FF7D7D"}
-
-phase_palette = {
-    'G0/G1': "#7C0EDD",
-    'G2/M': "#20C4AC",
-    'S': "#FFF600",
+    "E7.5": "#8000ff",
+    "E8.0": "#1996f3",
+    "E8.5": "#4df3ce",
+    "E9.0": "#b2f396",
+    "E9.5": "#ff964f",
+    "E10.0": "#ff0000",
 }
 
-edit_site_palette = {"ES1":"#adcdec","ES2":"#999bcd","ES3":"#44c8f5"}
+type_palette = {"donor": "#1874CD", "host": "#FF7D7D"}
 
-lineage_palette = {'Epiblast': "#A983F2",
-                   'Primordial germ cell': "#20C4AC",
-                   'Ectoderm': "#1874CD",
-                   'Neural ectoderm': "#83A4FF", 
-                   'Surface ectoderm': "#75F6FC", 
-                   'Neural crest': "#7C0EDD", 
-                   'Extraembryonic ectoderm':"#262C6B",
-                   'Mesoderm': "#CD2626",
-                   'Lateral plate mesoderm':"#7F0303",
-                   'Intermediate mesoderm': "#FFC0CB",
-                   'Paraxial mesoderm': "#FF7D7D", 
-                   'Extraembryonic mesoderm': "#D34818", 
-                   'Endoderm': "#FFE600",
-                   'Extraembryonic endoderm': "#E69F00",
-                   'Blood': "#009E73"}
+phase_palette = {
+    "G0/G1": "#7C0EDD",
+    "G2/M": "#20C4AC",
+    "S": "#FFF600",
+}
 
+edit_site_palette = {"ES1": "#adcdec", "ES2": "#999bcd", "ES3": "#44c8f5"}
 
-embryos = ["E7.5-R1","E7.5-R2","E7.5-R3","E8.0-R1","E8.0-R2","E8.0-R3","E8.5-R1",
-"E8.5-R2","E8.5-R3","E9.0-R1","E9.0-R2","E9.0-R3","E9.5-R1","E9.5-R2","E9.5-R3","E10.0-R1"]
-embryo_palette = dict(zip(embryos,reversed(discrete_cmap[17][1:17])))
+lineage_palette = {
+    "Epiblast": "#A983F2",
+    "Primordial germ cell": "#20C4AC",
+    "Ectoderm": "#1874CD",
+    "Neural ectoderm": "#83A4FF",
+    "Surface ectoderm": "#75F6FC",
+    "Neural crest": "#7C0EDD",
+    "Extraembryonic ectoderm": "#262C6B",
+    "Mesoderm": "#CD2626",
+    "Lateral plate mesoderm": "#7F0303",
+    "Intermediate mesoderm": "#FFC0CB",
+    "Paraxial mesoderm": "#FF7D7D",
+    "Extraembryonic mesoderm": "#D34818",
+    "Endoderm": "#FFE600",
+    "Extraembryonic endoderm": "#E69F00",
+    "Blood": "#009E73",
+}
+
+meso_lineage_palette = lineage_palette.copy()
+meso_lineage_palette.update({"Head mesoderm": "#ffff04", "Cardiac mesoderm": "#ee970c", "Other": "dimgray"})
+
+embryos = [
+    "E7.5-R1",
+    "E7.5-R2",
+    "E7.5-R3",
+    "E8.0-R1",
+    "E8.0-R2",
+    "E8.0-R3",
+    "E8.5-R1",
+    "E8.5-R2",
+    "E8.5-R3",
+    "E9.0-R1",
+    "E9.0-R2",
+    "E9.0-R3",
+    "E9.5-R1",
+    "E9.5-R2",
+    "E9.5-R3",
+    "E10.0-R1",
+]
+embryo_palette = dict(zip(embryos, reversed(discrete_cmap[17][1:17]), strict=False))
 
 edit_palette = {str(i): discrete_cmap[8][i - 1] for i in range(1, 9)}
-edit_palette.update({ "!": "#505050","*":"lightgray","-": "white"})
+edit_palette.update({"!": "#505050", "*": "lightgray", "-": "white"})
 
 # Cell type palette
 cell_types = pd.read_csv(base_path / "data" / "cell_types.csv", index_col=0)
 subtype_palette = cell_types["subtype_color"].to_dict()
 celltype_palette = cell_types.groupby("cell_type")["type_color"].first().to_dict()
 
+axial_palette = lineage_palette.copy()
+axial_palette["Somite"] = "#ffb861"
+axial_palette["Spinal cord"] = "#61a5ff"
+axial_palette["Hindbrain"] = "#4D2600"
+axial_palette["Presomitic mesoderm"] = celltype_palette["Presomitic mesoderm"]
+axial_palette["Axial progenitor"] = celltype_palette["Axial progenitor"]
+
+
 # Default style
 def set_theme(figsize=(3, 3), dpi=200):
-    """Set the default style for the plots"""
+    """Set the default matplotlib style for devmap figures.
+
+    Applies the package ``style.yaml`` stylesheet, keeps SVG text editable
+    (``svg.fonttype="none"``), and sets the default color cycle to the project
+    ``colors`` list (excluding its first entry).
+
+    Parameters
+    ----------
+    figsize : tuple of float
+        Default figure size in inches (``figure.figsize``).
+    dpi : int
+        Default figure resolution (``figure.dpi``).
+
+    Returns
+    -------
+    None
+    """
     style_path = resources.files("devmap").joinpath("style.yaml")
     plt.style.use(str(style_path))
     plt.rcParams["svg.fonttype"] = "none"

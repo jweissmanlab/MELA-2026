@@ -1,11 +1,43 @@
+import hotspot
 import numpy as np
 import pandas as pd
-from scipy import sparse
 import scipy as sp
-import hotspot
+from scipy import sparse
 
 
 def create_knn_graph(distances, cell_index, sigma=2.0):
+    """
+    Convert a sparse kNN distance matrix into Hotspot neighbor and weight tables.
+
+    Distances are converted to Gaussian-like weights ``exp(-d / sigma)`` and
+    made non-redundant with ``hotspot.knn.make_weights_non_redundant``.
+
+    Parameters
+    ----------
+    distances : scipy.sparse matrix
+        Cell x cell sparse distance matrix (e.g. ``adata.obsp["distances"]``)
+        with the same number of stored neighbors in every row.
+    cell_index : pd.Index | array-like
+        Cell identifiers used as the row index of the output tables.
+    sigma : float
+        Bandwidth for the distance-to-weight transform. Defaults to 2.0.
+
+    Returns
+    -------
+    neighbors : pd.DataFrame
+        Cells x k table of neighbor positions (integer row indices).
+    weights : pd.DataFrame
+        Cells x k table of non-redundant edge weights aligned with
+        *neighbors*.
+
+    Raises
+    ------
+    TypeError
+        If *distances* is not a scipy sparse matrix.
+    ValueError
+        If rows have differing numbers of neighbors (the counts distribution
+        is printed first).
+    """
     if not sparse.issparse(distances):
         raise TypeError("Expected a scipy sparse matrix")
 
@@ -35,7 +67,38 @@ def create_knn_graph(distances, cell_index, sigma=2.0):
     weights = pd.DataFrame(weights_nr, index=neighbors.index, columns=neighbors.columns)
     return neighbors, weights
 
+
 def get_clusters(Z, t=5, min_size=10):
+    """
+    Cluster genes by average-linkage hierarchical clustering of a similarity matrix.
+
+    The similarity matrix (e.g. Hotspot local-correlation Z scores) is
+    converted to distances by negation and shifting so the minimum is 0, with
+    a zero diagonal. The average-linkage tree is cut into at most *t*
+    clusters. Clusters with fewer than *min_size* genes are then merged into
+    the large cluster with the smallest mean distance to them, and labels
+    are renumbered consecutively from 1 (merging and relabeling only occur
+    if both small and large clusters exist).
+
+    Parameters
+    ----------
+    Z : pd.DataFrame
+        Symmetric gene x gene similarity matrix.
+    t : int
+        Maximum number of clusters (``fcluster`` with ``criterion="maxclust"``).
+        Defaults to 5.
+    min_size : int
+        Clusters smaller than this are merged into a larger cluster.
+        Defaults to 10.
+
+    Returns
+    -------
+    clusters : pd.Series
+        Cluster label per gene (index matches ``Z.index``), named "cluster".
+    L : np.ndarray
+        Linkage matrix from ``scipy.cluster.hierarchy.linkage`` (computed
+        before small-cluster merging).
+    """
     # similarity -> distance
     D = -Z.values
     D = D - D.min()
@@ -43,11 +106,7 @@ def get_clusters(Z, t=5, min_size=10):
 
     L = sp.cluster.hierarchy.linkage(sp.spatial.distance.squareform(D, checks=False), method="average")
 
-    clusters = pd.Series(
-        sp.cluster.hierarchy.fcluster(L, t=t, criterion="maxclust"),
-        index=Z.index,
-        name="cluster"
-    )
+    clusters = pd.Series(sp.cluster.hierarchy.fcluster(L, t=t, criterion="maxclust"), index=Z.index, name="cluster")
 
     # merge tiny clusters into nearest non-tiny cluster
     sizes = clusters.value_counts()
@@ -63,10 +122,7 @@ def get_clusters(Z, t=5, min_size=10):
 
             for target in large:
                 genes_t = clusters[clusters == target].index
-                dist = D[np.ix_(
-                    Z.index.get_indexer(genes_c),
-                    Z.index.get_indexer(genes_t)
-                )].mean()
+                dist = D[np.ix_(Z.index.get_indexer(genes_c), Z.index.get_indexer(genes_t))].mean()
 
                 if dist < best_dist:
                     best_dist = dist
@@ -81,6 +137,7 @@ def get_clusters(Z, t=5, min_size=10):
 
     return clusters, L
 
+
 def score_programs(
     adata,
     programs,
@@ -91,6 +148,45 @@ def score_programs(
     use_raw=False,
     gene_pool=None,
 ):
+    """
+    Score gene programs per cell against expression-matched control genes.
+
+    Similar to ``scanpy.tl.score_genes`` but deterministic: genes in the pool
+    are ranked by mean expression and split into quantile bins. A program's
+    score is the per-cell mean expression of its genes minus a control score,
+    where the control is the average of the per-cell mean expression of all
+    pool genes in each bin, weighted by the number of program genes falling
+    in that bin.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Expression data.
+    programs : pd.DataFrame
+        One row per program, with a program-name column and a gene-list column.
+    genes_col : str
+        Column in *programs* holding genes as a ", "-separated string.
+        Defaults to "genes".
+    program_col : str
+        Column in *programs* holding the program name. Defaults to "program".
+    n_bins : int
+        Number of expression bins (capped at the number of pool genes;
+        duplicate edges dropped). Defaults to 25.
+    layer : str | None
+        Layer in ``adata.layers`` to use instead of ``adata.X``.
+    use_raw : bool
+        If True, use ``adata.raw.X`` (takes precedence over *layer*).
+        Defaults to False.
+    gene_pool : list-like | None
+        Genes eligible for binning, control sets, and program membership.
+        If None, all genes are used.
+
+    Returns
+    -------
+    pd.DataFrame
+        Cells x programs score matrix indexed by ``adata.obs_names``. Programs
+        with no genes in the pool are all NaN.
+    """
     if use_raw:
         X = adata.raw.X
         var_names = pd.Index(adata.raw.var_names)
@@ -171,6 +267,7 @@ def score_programs(
 
     return pd.DataFrame(scores, index=adata.obs_names)
 
+
 def compute_modules_agglomerative(
     cluster_Z,
     min_gene_threshold=8,
@@ -202,7 +299,6 @@ def compute_modules_agglomerative(
         Linkage-like matrix with columns:
         [cluster1, cluster2, merge_score, new_cluster_size]
     """
-
     if not isinstance(cluster_Z, pd.DataFrame):
         raise TypeError("cluster_Z must be a pandas DataFrame")
 
@@ -214,10 +310,7 @@ def compute_modules_agglomerative(
         raise ValueError("cluster_Z must be square")
 
     # active clusters: cluster_id -> {"members": [...], "size": int}
-    clusters = {
-        i: {"members": [i], "size": 1}
-        for i in range(n)
-    }
+    clusters = {i: {"members": [i], "size": 1} for i in range(n)}
     active = set(clusters.keys())
 
     # mean cross-cluster Z for active pairs
