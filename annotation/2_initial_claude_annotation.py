@@ -7,31 +7,33 @@ linked cell type information to predict a cell type and provide rationale.
 Results are saved incrementally to avoid losing progress on failure.
 """
 
+import argparse
 import csv
 import json
+import os
 import subprocess
 import sys
-import os
-import argparse
 from pathlib import Path
 
 INPUT_CSV = Path(__file__).parent / "results" / "subclusters.csv"
 OUTPUT_CSV = Path(__file__).parent / "results" / "subclusters_annotated.csv"
 
-JSON_SCHEMA = json.dumps({
-    "type": "object",
-    "properties": {
-        "predicted_cell_type": {
-            "type": "string",
-            "description": "Concise cell type name (e.g. 'cardiac neural crest cell')"
+JSON_SCHEMA = json.dumps(
+    {
+        "type": "object",
+        "properties": {
+            "predicted_cell_type": {
+                "type": "string",
+                "description": "Concise cell type name (e.g. 'cardiac neural crest cell')",
+            },
+            "rationale": {
+                "type": "string",
+                "description": "2-4 sentence explanation citing specific marker genes and linked cell types",
+            },
         },
-        "rationale": {
-            "type": "string",
-            "description": "2-4 sentence explanation citing specific marker genes and linked cell types"
-        }
-    },
-    "required": ["predicted_cell_type", "rationale"]
-})
+        "required": ["predicted_cell_type", "rationale"],
+    }
+)
 
 SYSTEM_PROMPT = (
     "You are an expert in mouse embryo development and single-cell RNA sequencing. "
@@ -41,7 +43,9 @@ SYSTEM_PROMPT = (
     "nomenclature. Be specific where the evidence supports it."
 )
 
+
 def build_prompt(row: dict) -> str:
+    """Build the annotation prompt for a cluster from its stage, markers, and linked cell types."""
     time_val = float(row["time"])
     # Convert numeric time to approximate embryonic day string
     time_str = f"E{time_val:.1f}"
@@ -64,14 +68,19 @@ Reference specific marker genes and linked cell types in your reasoning."""
 
 
 def call_claude(prompt: str, model: str = "sonnet") -> dict:
+    """Run headless ``claude --print`` with the JSON schema and return the parsed structured output."""
     cmd = [
         "claude",
         "--print",
-        "--output-format", "json",
-        "--json-schema", JSON_SCHEMA,
-        "--append-system-prompt", SYSTEM_PROMPT,
+        "--output-format",
+        "json",
+        "--json-schema",
+        JSON_SCHEMA,
+        "--append-system-prompt",
+        SYSTEM_PROMPT,
         "--no-session-persistence",
-        "--model", model,
+        "--model",
+        model,
         prompt,
     ]
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
@@ -117,13 +126,11 @@ def load_existing_results(output_path: Path) -> dict:
 
 
 def main():
+    """Annotate each subcluster with Claude, appending results incrementally to ``OUTPUT_CSV``."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", default="claude-opus-4-5",
-                        help="Claude model alias (default: claude-opus-4-5)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print prompts without calling claude")
-    parser.add_argument("--start-at", type=int, default=0,
-                        help="Skip the first N rows (0-indexed, for debugging)")
+    parser.add_argument("--model", default="claude-opus-4-5", help="Claude model alias (default: claude-opus-4-5)")
+    parser.add_argument("--dry-run", action="store_true", help="Print prompts without calling claude")
+    parser.add_argument("--start-at", type=int, default=0, help="Skip the first N rows (0-indexed, for debugging)")
     args = parser.parse_args()
 
     # Read all input rows
@@ -194,7 +201,7 @@ def main():
                 "rationale": rationale,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"ERROR: {e}", flush=True)
             errors.append((subcluster, str(e)))
             # Write a placeholder so we can identify failures

@@ -1,36 +1,43 @@
 #!/usr/bin/env python3
 """
-Annotate cell subtypes using headless Claude Code.
+Annotate cell types/subtypes using headless Claude Code.
 
-Reads results/cell_type_info.csv and queries Claude to add a biological
-description and naming rationale to each cell subtype. Writes results to
-results/cell_subtypes_annotated.csv.
+Reads results/cell_types_annotated.csv and queries Claude to add a biological
+description and naming rationale to each row that does not already have one.
+Rows that already contain a description and rationale are left untouched — the
+file is updated in place and existing annotations are never overwritten.
 
 Usage:
     python 5_final_claude_annotation.py
     python 5_final_claude_annotation.py --model claude-opus-4-7   # override model
+    python 5_final_claude_annotation.py --input results/other.csv # override file
 """
 
 import argparse
 import csv
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
-INPUT_CSV = Path(__file__).parent / "results" / "cell_type_info.csv"
-OUTPUT_CSV = Path(__file__).parent / "results" / "cell_subtypes_annotated.csv"
+DEFAULT_CSV = Path(__file__).parent / "results" / "cell_types_annotated.csv"
 
-JSON_SCHEMA = json.dumps({
-    "type": "object",
-    "properties": {
-        "description": {"type": "string"},
-        "rationale":   {"type": "string"},
-    },
-    "required": ["description", "rationale"],
-    "additionalProperties": False,
-})
+FAILED_MARKER = "Annotation failed after retries."
+
+JSON_SCHEMA = json.dumps(
+    {
+        "type": "object",
+        "properties": {
+            "description": {"type": "string"},
+            "rationale": {"type": "string"},
+        },
+        "required": ["description", "rationale"],
+        "additionalProperties": False,
+    }
+)
 
 SYSTEM_PROMPT = (
     "You are an expert developmental biologist and single-cell genomics researcher. "
@@ -47,9 +54,16 @@ SYSTEM_PROMPT = (
 
 
 def build_prompt(row: dict) -> str:
+    """Build the prompt for a cell type/subtype row from its name, lineage, stages, and markers."""
+    subtype = (row.get("cell_subtype") or "").strip()
+    cell_type = (row.get("cell_type") or "").strip()
+    # Parent cell-type rows have no cell_subtype; annotate the cell type itself.
+    if subtype:
+        name_lines = f"Cell subtype: {subtype}\nParent cell type: {cell_type}\n"
+    else:
+        name_lines = f"Cell type: {cell_type}\n"
     return (
-        f"Cell subtype: {row['cell_subtype']}\n"
-        f"Parent cell type: {row['cell_type']}\n"
+        f"{name_lines}"
         f"Lineage: {row['lineage']}\n"
         f"Germ layer: {row['germ_layer']}\n"
         f"Stages present: {row['stages']}\n"
@@ -63,6 +77,11 @@ def build_prompt(row: dict) -> str:
 
 
 def annotate_subtype(row: dict, model: str, max_retries: int = 3) -> dict:
+    """Query Claude for a description and naming rationale for one row.
+
+    Retries up to ``max_retries`` times with exponential backoff and raises
+    ``RuntimeError`` if every attempt fails.
+    """
     prompt = build_prompt(row)
     for attempt in range(max_retries):
         try:
@@ -70,11 +89,15 @@ def annotate_subtype(row: dict, model: str, max_retries: int = 3) -> dict:
                 [
                     "claude",
                     "--print",
-                    "--output-format", "json",
-                    "--json-schema", JSON_SCHEMA,
-                    "--append-system-prompt", SYSTEM_PROMPT,
+                    "--output-format",
+                    "json",
+                    "--json-schema",
+                    JSON_SCHEMA,
+                    "--append-system-prompt",
+                    SYSTEM_PROMPT,
                     "--no-session-persistence",
-                    "--model", model,
+                    "--model",
+                    model,
                     prompt,
                 ],
                 capture_output=True,
@@ -105,81 +128,102 @@ def annotate_subtype(row: dict, model: str, max_retries: int = 3) -> dict:
             print(f"  Error on attempt {attempt + 1}: {e}")
 
         if attempt < max_retries - 1:
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
 
     raise RuntimeError(f"Failed to annotate after {max_retries} attempts")
 
 
-def load_existing_annotations(path: Path) -> set:
-    """Load already-processed rows keyed by subtype_id."""
-    if not path.exists():
-        return set()
-    with open(path, newline="") as f:
-        reader = csv.DictReader(f)
-        return {row["subtype_id"] for row in reader if row.get("description") and row["description"] != "Annotation failed after retries."}
+def id_column(fieldnames) -> str:
+    """Return the row-identifier column, preferring 'id' over legacy 'subtype_id'."""
+    for candidate in ("id", "subtype_id"):
+        if candidate in fieldnames:
+            return candidate
+    raise KeyError("Input CSV must have an 'id' or 'subtype_id' column")
+
+
+def is_annotated(row: dict) -> bool:
+    """A row is already annotated if it has both a description and rationale."""
+    desc = (row.get("description") or "").strip()
+    rat = (row.get("rationale") or "").strip()
+    return bool(desc) and bool(rat) and desc != FAILED_MARKER
+
+
+def write_csv(path: Path, fieldnames, rows) -> None:
+    """Atomically write all rows to path, preserving column order."""
+    fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
 
 
 def main():
+    """Annotate unannotated rows of the input CSV in place, preserving existing annotations."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", default="claude-opus-4-6",
-                        help="Claude model alias (default: claude-opus-4-6)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print prompts without calling Claude")
+    parser.add_argument("--model", default="claude-opus-4-6", help="Claude model alias (default: claude-opus-4-6)")
+    parser.add_argument(
+        "--input", type=Path, default=DEFAULT_CSV, help=f"CSV to annotate in place (default: {DEFAULT_CSV})"
+    )
+    parser.add_argument("--dry-run", action="store_true", help="Print prompts without calling Claude")
     args = parser.parse_args()
 
-    with open(INPUT_CSV, newline="") as f:
+    csv_path = args.input
+    with open(csv_path, newline="") as f:
         reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames
-        subtypes = list(reader)
-    print(f"Loaded {len(subtypes)} subtypes from {INPUT_CSV}")
+        fieldnames = list(reader.fieldnames)
+        rows = list(reader)
+    id_col = id_column(fieldnames)
+    print(f"Loaded {len(rows)} rows from {csv_path}")
 
-    existing = load_existing_annotations(OUTPUT_CSV)
-    if existing:
-        print(f"Resuming: {len(existing)} subtypes already annotated.")
+    # Ensure the annotation columns exist without disturbing existing values/order.
+    for col in ("description", "rationale"):
+        if col not in fieldnames:
+            fieldnames.append(col)
+            for row in rows:
+                row.setdefault(col, "")
 
-    out_fieldnames = list(fieldnames) + ["description", "rationale"]
-    write_header = not OUTPUT_CSV.exists() or len(existing) == 0
-    out_f = open(OUTPUT_CSV, "a" if not write_header else "w", newline="")
-    writer = csv.DictWriter(out_f, fieldnames=out_fieldnames)
-    if write_header:
-        writer.writeheader()
-        for row in subtypes:
-            if row["subtype_id"] in existing:
-                writer.writerow(row)
-        out_f.flush()
-
-    todo = [s for s in subtypes if s["subtype_id"] not in existing]
-    print(f"Annotating {len(todo)} subtypes...")
+    already = sum(1 for row in rows if is_annotated(row))
+    todo = [row for row in rows if not is_annotated(row)]
+    print(f"{already} rows already annotated (preserved); annotating {len(todo)} rows...")
 
     errors = []
-    try:
-        for i, row in enumerate(todo, 1):
-            sid = row["subtype_id"]
-            print(f"[{i}/{len(todo)}] {sid}: {row['cell_subtype']}", end=" ", flush=True)
+    for i, row in enumerate(todo, 1):
+        rid = row[id_col]
+        name = (row.get("cell_subtype") or "").strip() or row.get("cell_type", "")
+        print(f"[{i}/{len(todo)}] {rid}: {name}", end=" ", flush=True)
 
-            if args.dry_run:
-                print("\n" + build_prompt(row) + "\n---")
-                continue
+        if args.dry_run:
+            print("\n" + build_prompt(row) + "\n---")
+            continue
 
-            try:
-                annotation = annotate_subtype(row, model=args.model)
-                print(f"-> {annotation['description'][:80]}...", flush=True)
-                writer.writerow({**row, "description": annotation["description"], "rationale": annotation["rationale"]})
-                out_f.flush()
-                existing.add(sid)
-            except Exception as e:
-                print(f"ERROR: {e}", flush=True)
-                errors.append((sid, str(e)))
-                writer.writerow({**row, "description": "Annotation failed after retries.", "rationale": str(e)})
-                out_f.flush()
-    finally:
-        out_f.close()
+        try:
+            annotation = annotate_subtype(row, model=args.model)
+            print(f"-> {annotation['description'][:80]}...", flush=True)
+            row["description"] = annotation["description"]
+            row["rationale"] = annotation["rationale"]
+        except Exception as e:  # noqa: BLE001
+            print(f"ERROR: {e}", flush=True)
+            errors.append((rid, str(e)))
+            row["description"] = FAILED_MARKER
+            row["rationale"] = str(e)
 
-    print(f"\nDone. Results written to {OUTPUT_CSV}")
+        # Persist after every row so progress survives interruptions.
+        write_csv(csv_path, fieldnames, rows)
+
+    if args.dry_run:
+        return
+
+    print(f"\nDone. Results written to {csv_path}")
     if errors:
         print(f"\n{len(errors)} errors:")
-        for sid, err in errors:
-            print(f"  {sid}: {err}")
+        for rid, err in errors:
+            print(f"  {rid}: {err}")
         sys.exit(1)
 
 
