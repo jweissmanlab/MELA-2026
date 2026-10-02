@@ -4,7 +4,7 @@
 #SBATCH --ntasks=1  
 #SBATCH --cpus-per-task=8  
 #SBATCH --mem=256gb 
-#SBATCH --partition=weissman    
+#SBATCH --partition=20    
 #SBATCH --account=weissman   
 #SBATCH --output=logs/qc-%j.out 
 #SBATCH --array=1-22%4 

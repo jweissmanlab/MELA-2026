@@ -13,7 +13,9 @@ set -euo pipefail
 
 ## Configure
 CSV="captures.csv"
-transcriptome="/lab/solexa_weissman/wcolgan/reference/cellranger/PETS"
+# Directory containing the custom Cell Ranger references (and B6_SNP_panel.vcf for VarTrix)
+REFERENCE_DIR="${REFERENCE_DIR:-../reference}"
+transcriptome="${REFERENCE_DIR}/cellranger/PETS"
 transcriptome=$(realpath "$transcriptome")
 fastq_dir=$(realpath "./fastq")
 
@@ -74,4 +76,4 @@ tracertools alleles-from-bam \
   --site_positions  "{'RNF2':332,'HEK3':380,'EMX1':448}" \
   --min_reads 2
 
-rm "./bam/${sample}.bam"
+rm -f "./bam/${sample}_ts.bam" "./bam/${sample}_ts.bai"

@@ -13,7 +13,9 @@ set -euo pipefail
 
 ## Configure
 CSV="captures.csv"
-transcriptome="/lab/solexa_weissman/wcolgan/reference/cellranger/mm39_PETS"
+# Directory containing the custom Cell Ranger references (and B6_SNP_panel.vcf for VarTrix)
+REFERENCE_DIR="${REFERENCE_DIR:-../reference}"
+transcriptome="${REFERENCE_DIR}/cellranger/mm39_PETS"
 transcriptome=$(realpath "$transcriptome")
 fastq_dir=$(realpath "./fastq")
 
@@ -54,7 +56,7 @@ rm -f "${data_dir}/${sample}_alt_counts.mtx"
 rm -f "${data_dir}/${sample}_ref_counts.mtx"
 vartrix -b "${output_dir}/possorted_genome_bam.bam" \
     -c "${output_dir}/filtered_feature_bc_matrix/barcodes.tsv.gz" \
-    -v "/lab/solexa_weissman/wcolgan/reference/B6_SNP_panel.vcf" \
+    -v "${REFERENCE_DIR}/B6_SNP_panel.vcf" \
     -f "${transcriptome}/fasta/genome.fa" \
     --out-matrix "${data_dir}/${sample}_alt_counts.mtx" \
     --ref-matrix "${data_dir}/${sample}_ref_counts.mtx" \
